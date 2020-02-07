@@ -55,7 +55,7 @@ class Tensor {
         // \todo look into what Eigen does for copying
         // read https://stackoverflow.com/questions/9322174/move-assignment-operator-and-if-this-rhs
         Tensor(const Tensor& t);
-        Tensor& operator=(Tensor t);
+        Tensor& operator=(const Tensor& t);
 
         Tensor(Tensor&&) = default;
         
@@ -65,12 +65,18 @@ class Tensor {
         float& operator[](const std::vector<size_t>& tensor_index);
         float& operator[](size_t flat_index);
 
+        Tensor operator+(const Tensor& ot);
+        Tensor& operator+=(const Tensor& ot);
+
         // Requires the resulting tensor to have the same number of components 
         void Resize(std::vector<size_t> tensor_size_in);
+        void SetZero();
 
         size_t Order() const;
         std::vector<size_t> TensorSize() const;
         size_t NumComponents() const;
+
+        friend bool SameTensorSize(const Tensor& x, const Tensor& y);
 
         /** 
          * Returns an order (ord(x) + ord(y) - 2)-tensor with elements the inner products of
@@ -83,9 +89,16 @@ class Tensor {
                                           const Tensor& x, const Tensor& y);
         friend Tensor OuterProduct(const Tensor& x, const Tensor& y);
 
+        /**
+         * Following Kolda
+         */
+        friend float InnerProduct(const Tensor& x, const Tensor& y); 
+
         std::string FlatString() const;
 
     private:	
+
+
         std::vector<size_t> tensor_size; 
         // \todo is it natural to change the sizes? If so I should have a constructor
         // which accepts just the order and a member SetTensorSize(...)
@@ -100,10 +113,13 @@ class Tensor {
 
 }; // Tensor
 
+bool SameTensorSize(const Tensor& x, const Tensor& y);
+
 Tensor Contract(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y);
 Tensor Convolve(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y);
 Tensor PartialOuterProduct(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y);
 Tensor OuterProduct(const Tensor& x, const Tensor& y);
+float InnerProduct(const Tensor& x, const Tensor& y);
 
 size_t ColMajorFlatIndex(const std::vector<size_t>& tensor_index, 
                          const std::vector<size_t>& tensor_size);

@@ -15,7 +15,7 @@ LDFLAGS :=
 LDLIBS := 
 
 CPPFLAGS :=  
-CXXFLAGS := ${incs} -Wall -Wextra -std=c++14 -g
+CXXFLAGS := ${incs} -Wall -Wextra -std=c++14 -g -O2
 
 
 (srcdir)/%.cpp : $(srcdir)/%.h

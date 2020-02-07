@@ -1,3 +1,4 @@
+#include <iostream>
 #include <utility>
 #include <numeric>
 #include <sstream>
@@ -23,15 +24,22 @@ Tensor::Tensor(std::vector<size_t> tensor_size_in)
 Tensor::Tensor(const Tensor& t) {
     tensor_size = t.tensor_size;
     num_components = t.num_components;
-    data = std::make_unique<float[]>(*t.data.get()); 
+    data = std::make_unique<float[]>(t.num_components);  
+    for(size_t i = 0; i < t.num_components; i++) {
+        data[i] = t.data[i]; 
+    }
 }
 
-Tensor& Tensor::operator=(Tensor t) {
-    // \todo at least one person on stack overflow things using the copy swap idiom is
-    // slow in the situation of "dumb_array", which sounds a lot like Tensor
-    std::swap(data, t.data); 
+Tensor& Tensor::operator=(const Tensor& t) {
+   
+   std::cout << "t.num_components " << t.num_components << "\n";
+    data = std::make_unique<float[]>(t.num_components); 
+    for(size_t i = 0; i < t.num_components; i++) {
+        data[i] = t.data[i]; 
+    }
+
     num_components = t.num_components;
-    std::swap(tensor_size, t.tensor_size);
+    tensor_size = t.tensor_size;
     return *this;
 }
 /*
@@ -43,6 +51,27 @@ Tensor& Tensor::operator=(Tensor&& t) {
     return *this;
 }
 */
+
+
+
+Tensor Tensor::operator+(const Tensor& ot) {
+    Tensor out = *this;
+    out += ot; 
+    return out;
+} 
+
+Tensor& Tensor::operator+=(const Tensor& ot) {
+	#ifdef DEBUG
+    if(!SameTensorSize(*this, ot)) {
+        std::cerr << "Error Tensor::operator+= !SameTensorSize(*this, ot)\n";
+    }
+    #endif // DEBUG	
+    for(size_t i = 0, N = num_components; i < N; i++) {
+        data[i] += ot.data[i];
+    }
+
+	return *this;	
+}
 
 /**
  * The inverse of ColMajorTensorIndex
@@ -194,6 +223,26 @@ void Tensor::Resize(std::vector<size_t> tensor_size_in) {
     tensor_size = std::move(tensor_size_in); 
 }
 
+void Tensor::SetZero() {
+    for(size_t i = 0; i < num_components; i++) {
+        data[i] = 0;
+    }
+}
+
+
+bool SameTensorSize(const Tensor& x, const Tensor& y) {
+    if(x.num_components != y.num_components || x.tensor_size.size() != y.tensor_size.size()) {
+        return false;
+    }
+
+    for(size_t i = 0; i < x.tensor_size.size(); i++) {
+        if(x.tensor_size[i] != y.tensor_size[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 Tensor Contract(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y) {
     // \todo what is the definition of contracting a tensor of order 0 with another tensor?
@@ -448,6 +497,23 @@ Tensor OuterProduct(const Tensor& x, const Tensor& y) {
 
     return product;
 } // OuterProduct
+
+
+float InnerProduct(const Tensor& x, const Tensor& y) {
+
+    #ifdef DEBUG
+    if(!SameTensorSize(x, y)) {
+        std::cerr << "Error InnerProduct: !SameTensorSize(x, y)\n";
+    }
+    #endif // DEBUG
+
+    float sum = 0;
+    for(size_t i = 0, N = x.num_components; i < N; i++) {
+        sum += x.data[i] * y.data[i];
+    }
+
+    return sum;
+}
 
 
 size_t Tensor::Order() const {
