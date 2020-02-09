@@ -360,8 +360,6 @@ Tensor MultiplyMatrix(size_t mode_k, const Tensor& t, const Tensor& m) {
     }
     #endif // DEBUG
 
-    size_t t_ord = t.Order();
-
     std::vector<size_t> out_size = t.tensor_size; 
     out_size[mode_k] = m.tensor_size[1];
 
@@ -374,14 +372,13 @@ Tensor MultiplyMatrix(size_t mode_k, const Tensor& t, const Tensor& m) {
     size_t m_offset = ModeStride(0, m.tensor_size);
 
     for(size_t i = 0; i < o_data_size; i++) {
-        std::vector<size_t> o_tensor_index = TensorIndex(i, out_size);
+        std::vector<size_t> t_initial_ti = TensorIndex(i, out_size);
         
-        std::vector<size_t> t_initial_ti = o_tensor_index;
+        std::vector<size_t> m_initial_ti = {0, t_initial_ti[mode_k]};
+        size_t m_initial = FlatIndex(m_initial_ti, m.tensor_size);
+
         t_initial_ti[mode_k] = 0;
         size_t t_initial = FlatIndex(t_initial_ti, t.tensor_size);
-
-        std::vector<size_t> m_initial_ti = {0, o_tensor_index[mode_k]};
-        size_t m_initial = FlatIndex(m_initial_ti, m.tensor_size);
 
         float dot_product = 0;
         for(size_t j = 0; j < mode_size; j++) {

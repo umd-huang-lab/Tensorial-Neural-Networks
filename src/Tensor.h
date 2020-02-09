@@ -129,7 +129,7 @@ Tensor Contract(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y);
  * Outputs an order m tensor, where m is the order of tensor.
  *
  * Note this isn't directly generalized by Contract because this arranges the output tensor
- * differently. See Table 7 from TNN paper.
+ * differently. See Table 7 from TNN paper. 
  */
 Tensor MultiplyMatrix(size_t mode_k, const Tensor& tensor, const Tensor& matrix);
 Tensor Convolve(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y);
