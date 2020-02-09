@@ -68,6 +68,9 @@ class Tensor {
         Tensor operator+(const Tensor& ot);
         Tensor& operator+=(const Tensor& ot);
 
+        Tensor operator-(const Tensor& ot);
+        Tensor& operator-=(const Tensor& ot);
+
         // Requires the resulting tensor to have the same number of components 
         void Resize(std::vector<size_t> tensor_size_in);
         void SetZero();
@@ -84,6 +87,7 @@ class Tensor {
          */
         // \todo could template the mode
         friend Tensor Contract(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y);
+        friend Tensor MultiplyMatrix(size_t mode_k, const Tensor& tensor, const Tensor& matrix);
         friend Tensor Convolve(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y);
         friend Tensor PartialOuterProduct(size_t mode_k, size_t mode_l, 
                                           const Tensor& x, const Tensor& y);
@@ -92,7 +96,7 @@ class Tensor {
         /**
          * Following Kolda
          */
-        friend float InnerProduct(const Tensor& x, const Tensor& y); 
+        friend float InnerProduct(const Tensor& x, const Tensor& y);  
 
         std::string FlatString() const;
 
@@ -108,19 +112,33 @@ class Tensor {
 
         // \todo should look into what Eigen does for its memory management
         std::unique_ptr<float[]> data; 
-        
-        
-
 }; // Tensor
 
 bool SameTensorSize(const Tensor& x, const Tensor& y);
 
+/**
+ * Expects the kth mode of x to have the same size as the lth mode of y.
+ * Outputs an order m+n-2 tensor, where m is the order of x and n the order of y.
+ */
 Tensor Contract(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y);
+
+
+/**
+ * Expects matrix to be an order 2 tensor, and that the kth mode of tensor has the same size
+ * as the 0th mode of matrixi.
+ * Outputs an order m tensor, where m is the order of tensor.
+ *
+ * Note this isn't directly generalized by Contract because this arranges the output tensor
+ * differently. See Table 7 from TNN paper.
+ */
+Tensor MultiplyMatrix(size_t mode_k, const Tensor& tensor, const Tensor& matrix);
 Tensor Convolve(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y);
 Tensor PartialOuterProduct(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y);
 Tensor OuterProduct(const Tensor& x, const Tensor& y);
 float InnerProduct(const Tensor& x, const Tensor& y);
 
+// \todo I wonder if reusing the same vector for index calculations 
+//       will give a significant speedup
 size_t ColMajorFlatIndex(const std::vector<size_t>& tensor_index, 
                          const std::vector<size_t>& tensor_size);
 

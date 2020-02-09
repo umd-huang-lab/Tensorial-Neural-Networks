@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 #include <utility>
 #include <numeric>
 #include <sstream>
@@ -72,6 +73,31 @@ Tensor& Tensor::operator+=(const Tensor& ot) {
 
 	return *this;	
 }
+
+
+
+Tensor Tensor::operator-(const Tensor& ot) {
+    Tensor out = *this;
+    out -= ot; 
+    return out;
+} 
+
+Tensor& Tensor::operator-=(const Tensor& ot) {
+	#ifdef DEBUG
+    if(!SameTensorSize(*this, ot)) {
+        std::cerr << "Error Tensor::operator-= !SameTensorSize(*this, ot)\n";
+    }
+    #endif // DEBUG	
+    for(size_t i = 0, N = num_components; i < N; i++) {
+        data[i] -= ot.data[i];
+    }
+
+	return *this;	
+}
+
+
+
+
 
 /**
  * The inverse of ColMajorTensorIndex
@@ -291,7 +317,7 @@ Tensor Contract(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y) 
         // naive and slow, and just an easy first try... when I change to computing the
         // x_initial/y_initial without first converting to TensorIndex, I'll have to
         // have two separate methods RowMajorContract and ColMajorContract
-        std::vector<size_t> c_tensor_index = TensorIndex(i, contraction.tensor_size);
+        std::vector<size_t> c_tensor_index = TensorIndex(i, contraction_size);
         auto c_it = c_tensor_index.begin();
         
         // compute x_initial, the first index of the given mode vector in the x tensor
@@ -323,6 +349,49 @@ Tensor Contract(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y) 
 
     return contraction;
 } // Contract
+
+Tensor MultiplyMatrix(size_t mode_k, const Tensor& t, const Tensor& m) {
+    #ifdef DEBUG
+    if(m.Order() != 2) {
+        std::cerr << "Error MultiplyMatrix: matrix.Order() != 2\n";
+    }
+    if(t.tensor_size[mode_k] != m.tensor_size[0]) {
+        std::cerr << "Error Tensor::MultiplyMatrix: t.tensor_size[mode_k] != m.tensor_size[0]\n"; 
+    }
+    #endif // DEBUG
+
+    size_t t_ord = t.Order();
+
+    std::vector<size_t> out_size = t.tensor_size; 
+    out_size[mode_k] = m.tensor_size[1];
+
+    Tensor out(out_size);
+    float* o_data = out.data.get();
+    size_t o_data_size = out.NumComponents();
+    size_t mode_size = t.tensor_size[mode_k];
+
+    size_t t_offset = ModeStride(mode_k, t.tensor_size);
+    size_t m_offset = ModeStride(0, m.tensor_size);
+
+    for(size_t i = 0; i < o_data_size; i++) {
+        std::vector<size_t> o_tensor_index = TensorIndex(i, out_size);
+        
+        std::vector<size_t> t_initial_ti = o_tensor_index;
+        t_initial_ti[mode_k] = 0;
+        size_t t_initial = FlatIndex(t_initial_ti, t.tensor_size);
+
+        std::vector<size_t> m_initial_ti = {0, o_tensor_index[mode_k]};
+        size_t m_initial = FlatIndex(m_initial_ti, m.tensor_size);
+
+        float dot_product = 0;
+        for(size_t j = 0; j < mode_size; j++) {
+            dot_product += t.data[t_initial + j*t_offset] * m.data[m_initial + j*m_offset];
+        }
+        o_data[i] = dot_product;
+    }
+
+    return out;
+} // MultiplyMatrix
 
 
 
@@ -515,6 +584,9 @@ float InnerProduct(const Tensor& x, const Tensor& y) {
     return sum;
 }
 
+float Norm(const Tensor& x) {
+    return std::sqrt(InnerProduct(x, x));
+}
 
 size_t Tensor::Order() const {
     return tensor_size.size(); 

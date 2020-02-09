@@ -129,7 +129,7 @@ int main() {
     /**
      * Rank decomposition section 3.1 of Kolda
      */
-
+    /*
     Tensor X({2,2,2});
     X[{0,0,0}] = 1; X[{0,1,0}] = 0;
     X[{1,0,0}] = 0; X[{1,1,0}] = 1;
@@ -173,6 +173,9 @@ int main() {
     
     std::cout << X.FlatString() << "\n";
     std::cout << decomp.FlatString() << "\n";
+    std::cout << (X - decomp).FlatString() << "\n";
+    std::cout << Norm(X - decomp) << "\n"; 
+    */
 
 /*
     Tensor o = OuterProduct(OuterProduct(A1, B1), C1) + OuterProduct(OuterProduct(A1, B1), C1);
@@ -184,6 +187,21 @@ int main() {
     //std::cout << decomp.TensorSize() << "\n";
 */
 
+
+    Tensor X({2,2,2});
+    X[{0,0,0}] = 1; X[{0,1,0}] = 0;
+    X[{1,0,0}] = 0; X[{1,1,0}] = 1;
+
+    X[{0,0,1}] = 0; X[{0,1,1}] = 1;
+    X[{1,0,1}] =-1; X[{1,1,1}] = 0;
+
+    Tensor M({2,3});
+    M[{0,0}] = 1; M[{0,1}] = 0; M[{0,2}] = 0;
+    M[{1,0}] = 0; M[{1,1}] = 1; M[{1,2}] = 0;
+
+    Tensor out = MultiplyMatrix(2, X, M);
+    std::cout << out.TensorSize() << "\n";
+    std::cout << out.FlatString() << "\n";
 
     return 0;
 }
