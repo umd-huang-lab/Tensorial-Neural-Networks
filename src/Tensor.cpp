@@ -203,8 +203,23 @@ size_t RowMajorModeStride(size_t mode, const std::vector<size_t>& tensor_size) {
         offset *= tensor_size[j];
     }
     return offset;
-
 }
+
+std::vector<size_t> ModeTensorIndex(size_t mode_k,
+                                    size_t mode_flat_index,
+                                    const std::vector<size_t>& tensor_size)
+{
+    std::vector<size_t> mode_tensor_size; mode_tensor_size.reserve(tensor_size.size()-1);
+    mode_tensor_size.insert(mode_tensor_size.end(), tensor_size.begin(),
+                                                    tensor_size.begin()+mode_k);
+    mode_tensor_size.insert(mode_tensor_size.end(), tensor_size.begin()+(mode_k+1),
+                                                    tensor_size.end());
+
+    std::vector<size_t> mode_tensor_index = TensorIndex(mode_flat_index, mode_tensor_size);
+    mode_tensor_index.insert(mode_tensor_index.begin()+mode_k, 0);
+    return mode_tensor_index;
+}
+
 
 /**
  *
@@ -254,6 +269,55 @@ void Tensor::SetZero() {
         data[i] = 0;
     }
 }
+
+
+void Tensor::SwapAxes(size_t mode_k, size_t mode_l) { 
+    #ifdef DEBUG
+    if(mode_k >= Order() || mode_l >= Order()) {
+        std::cerr << "Error Tensor::SwapAxes: mode_k >= Order() || mode_l >= Order()\n";
+    }
+    #endif // DEBUG
+
+    // there's probably a better algorithm
+    Tensor swapped = SwappedAxes(mode_k, mode_l);
+    *this = swapped;
+}
+
+Tensor Tensor::SwappedAxes(size_t mode_k, size_t mode_l) const { 
+    #ifdef DEBUG
+    if(mode_k >= Order() || mode_l >= Order()) {
+        std::cerr << "Error Tensor::SwapAxes: mode_k >= Order() || mode_l >= Order()\n";
+    }
+    #endif // DEBUG
+
+    std::vector<size_t> swapped_tensor_size = tensor_size;
+    {
+    size_t temp = swapped_tensor_size[mode_k];
+    swapped_tensor_size[mode_k] = swapped_tensor_size[mode_l];
+    swapped_tensor_size[mode_l] = temp;
+    }
+
+
+    Tensor swapped(swapped_tensor_size);
+
+    for(size_t i = 0; i < num_components; i++) {
+        std::vector<size_t> ti = TensorIndex(i, tensor_size);
+        std::vector<size_t> swapped_ti = ti;
+        {
+        size_t temp = swapped_ti[mode_k];
+        swapped_ti[mode_k] = swapped_ti[mode_l];
+        swapped_ti[mode_l] = temp;
+        }
+
+        size_t swapped_i = FlatIndex(swapped_ti, swapped_tensor_size);
+
+        swapped.data[swapped_i] = data[i];
+    }
+
+    return swapped;
+}
+
+
 
 
 bool SameTensorSize(const Tensor& x, const Tensor& y) {

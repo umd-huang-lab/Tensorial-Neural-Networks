@@ -73,7 +73,19 @@ class Tensor {
 
         // Requires the resulting tensor to have the same number of components 
         void Resize(std::vector<size_t> tensor_size_in);
+
+        
         void SetZero();
+
+        /**
+         * Swaps the given modes so that T(..., k, ..., l, ...) -> T(..., l, ..., k, ...)
+         */
+        void SwapAxes(size_t mode_k, size_t mode_l);
+
+        /**
+         * SwapAxes mutates the given tensor, whereas SwappedAxes returns a new tensor.
+         */
+        Tensor SwappedAxes(size_t mode_k, size_t mode_l) const;
 
         size_t Order() const;
         std::vector<size_t> TensorSize() const;
@@ -141,26 +153,63 @@ float InnerProduct(const Tensor& x, const Tensor& y);
 //       will give a significant speedup
 size_t ColMajorFlatIndex(const std::vector<size_t>& tensor_index, 
                          const std::vector<size_t>& tensor_size);
-
-std::vector<size_t> ColMajorTensorIndex(size_t flat_index, const std::vector<size_t>& tensor_size);
+std::vector<size_t> ColMajorTensorIndex(size_t flat_index, 
+                                        const std::vector<size_t>& tensor_size);
 size_t ColMajorModeStride(size_t mode, const std::vector<size_t>& tensor_size);
 
 size_t RowMajorFlatIndex(const std::vector<size_t>& tensor_index, 
                          const std::vector<size_t>& tensor_size); 
-std::vector<size_t> RowMajorTensorIndex(size_t flat_index, const std::vector<size_t>& tensor_size); 
+std::vector<size_t> RowMajorTensorIndex(size_t flat_index, 
+                                        const std::vector<size_t>& tensor_size); 
 size_t RowMajorModeStride(size_t mode, const std::vector<size_t>& tensor_size);
 
 
-
-
-// You have to select all three in a group and none in the other
+// You have to select all in a group and none in the other
 //const auto FlatIndex = ColMajorFlatIndex;
 //const auto TensorIndex = ColMajorTensorIndex;
 //const auto ModeStride = ColMajorModeStride;
 
+
 const auto FlatIndex = RowMajorFlatIndex;
 const auto TensorIndex = RowMajorTensorIndex;
 const auto ModeStride = RowMajorModeStride;
+
+
+
+/**
+ * Returns the initial tensor index of the given mode, where mode_flat_index
+ * ranges over [0, num_components / tensor_size[mode_k]], num_components the number
+ * of components in the tensor. 
+ * Allows easy indexing over the given mode
+ */
+std::vector<size_t> ModeTensorIndex(size_t mode_k,
+                                    size_t mode_flat_index,
+                                    const std::vector<size_t>& tensor_size);
+
+size_t SliceStride(const std::vector<size_t>& slice_modes, 
+                   const std::vector<size_t>& tensor_size);
+
+/**
+ * Generalizes ModeTensorIndex, which corresponds to passing a single mode to slice_modes
+ */
+std::vector<size_t> SliceTensorIndex(const std::vector<size_t>& slice_modes,
+                                     size_t slice_flat_index,
+                                     const std::vector<size_t>& tensor_size);
+
+/** 
+ * Slices the modes not in coslice_modes
+ */
+size_t CoSliceStride(const std::vector<size_t>& coslice_modes,
+                     const std::vector<size_t>& tensor_size);
+/**
+ * Slices the modes not in coslice_modes
+ */
+std::vector<size_t> CoSliceTensorIndex(const std::vector<size_t>& coslice_modes,
+                                     size_t coslice_flat_index,
+                                     const std::vector<size_t>& tensor_size);
+
+
+
 
 } // OPS
 

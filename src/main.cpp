@@ -187,7 +187,7 @@ int main() {
     //std::cout << decomp.TensorSize() << "\n";
 */
 
-
+/*
     Tensor X({2,2,2});
     X[{0,0,0}] = 1; X[{0,1,0}] = 0;
     X[{1,0,0}] = 0; X[{1,1,0}] = 1;
@@ -202,6 +202,50 @@ int main() {
     Tensor out = MultiplyMatrix(2, X, M);
     std::cout << out.TensorSize() << "\n";
     std::cout << out.FlatString() << "\n";
+*/
+
+/*
+    Tensor X({2,2,3});
+    X[{0,0,0}] = 1; X[{0,1,0}] = 0;
+    X[{1,0,0}] = 0; X[{1,1,0}] = 1;
+
+    X[{0,0,1}] = 0; X[{0,1,1}] = 1;
+    X[{1,0,1}] =-1; X[{1,1,1}] = 0;
+
+    X[{0,0,2}] = 0; X[{0,1,2}] = 1;
+    X[{1,0,2}] =-1; X[{1,1,2}] = 0;
+
+    std::cout << "Mode Tensor Index: " << ModeTensorIndex(1, 3,  X.TensorSize()) << "\n";  
+*/
+
+
+
+    {
+    Tensor X({2,2,3});
+    X[{0,0,0}] = 1; X[{0,1,0}] = 2;
+    X[{1,0,0}] = 0; X[{1,1,0}] = 1;
+
+    X[{0,0,1}] = 0; X[{0,1,1}] = 1;
+    X[{1,0,1}] =-1; X[{1,1,1}] = 3;
+
+    X[{0,0,2}] =-5; X[{0,1,2}] = 1;
+    X[{1,0,2}] =-1; X[{1,1,2}] = 5;
+
+    std::cout << X.FlatString() << "\n";
+    X.SwapAxes(0,1);
+    std::cout << X.FlatString() << "\n";
+    }
+    {
+    Tensor X({2,2});
+    X[{0,0}] = 1; X[{0,1}] = 2;
+    X[{1,0}] = 0; X[{1,1}] = 1;
+
+
+    std::cout << X.FlatString() << "\n";
+    X.SwapAxes(0,1);
+    std::cout << X.FlatString() << "\n";
+    }
+
 
     return 0;
 }
