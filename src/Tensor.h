@@ -106,9 +106,25 @@ class Tensor {
         friend Tensor OuterProduct(const Tensor& x, const Tensor& y);
 
         /**
-         * Following Kolda
+         * Frobenius Inner Product 
          */
         friend float InnerProduct(const Tensor& x, const Tensor& y);  
+        
+
+        /**
+         * Replaces the matrix at the given slice_index with its pseudo inverse. 
+         * (slice_mode1, slice_mode2) specifies the modes which the matrices occupy
+         *
+         * expects slice_mode1 < slice_mode2.... why though? \todo
+         *
+         * slice_index is a tensor_index of t, the indices at slice_mode1 and slice_mode2
+         * should be 0
+         *
+         * since the pseudo inverse has the dimensions of the transpose, to do this in place you have to
+         * set the transpose, not the pseudo inverse itself 
+         */
+        void SetPseudoInverseTranspose(size_t slice_mode1, size_t slice_mode2, 
+                              std::vector<size_t> slice_index); 
 
         std::string FlatString() const;
 
@@ -140,14 +156,49 @@ Tensor Contract(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y);
  * as the 0th mode of matrixi.
  * Outputs an order m tensor, where m is the order of tensor.
  *
+ * Replaces the mode_k vectors v with matrix * v (\todo or is it v * matrix?)
  * Note this isn't directly generalized by Contract because this arranges the output tensor
  * differently. See Table 7 from TNN paper. 
  */
 Tensor MultiplyMatrix(size_t mode_k, const Tensor& tensor, const Tensor& matrix);
+
+/**
+ * As given by Kolda and Rabanser et al
+ * Replaces the mode_k vectors with the scalar dot(vector, v)
+ */
+Tensor MultiplyVector(size_t mode_k, const Tensor& tensor, const Tensor& vector);
+
 Tensor Convolve(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y);
 Tensor PartialOuterProduct(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y);
 Tensor OuterProduct(const Tensor& x, const Tensor& y);
 float InnerProduct(const Tensor& x, const Tensor& y);
+
+/**
+ * Frobenius Norm
+ */
+float Norm(const Tensor& x);
+
+
+
+/**
+ * mat1 and mat2 are order 2 tensors (matrices) with the same number of columns
+ */
+Tensor KhatriRaoProduct(const Tensor& mat1, const Tensor& mat2);
+
+
+/**
+ * Alternating Least Squares method of computing CP Decomposition in the
+ * Order 3 tensor case. Returns an order 3 Tensor cpd such that cpd[:,:,0], cpd[:,:,1], cpd[:,:,2]
+ * are the factor matrices of the CP Decomposition, and an order 1 tensor weights, representing
+ * the lambda weights.
+ */
+struct CPDDecompOut {
+    Tensor weights;
+    Tensor cpd;
+};
+CPDDecompOut CPDecompALSOrder3(const Tensor& t, size_t rank);
+
+
 
 // \todo I wonder if reusing the same vector for index calculations 
 //       will give a significant speedup
@@ -164,15 +215,21 @@ std::vector<size_t> RowMajorTensorIndex(size_t flat_index,
 size_t RowMajorModeStride(size_t mode, const std::vector<size_t>& tensor_size);
 
 
-// You have to select all in a group and none in the other
-//const auto FlatIndex = ColMajorFlatIndex;
-//const auto TensorIndex = ColMajorTensorIndex;
-//const auto ModeStride = ColMajorModeStride;
 
 
+#define DATA_LAYOUT COL_MAJOR
+#define COL_MAJOR 1
+#define ROW_MAJOR 2
+// a temporary solution \todo
+#if DATA_LAYOUT == COL_MAJOR
+const auto FlatIndex = ColMajorFlatIndex;
+const auto TensorIndex = ColMajorTensorIndex;
+const auto ModeStride = ColMajorModeStride;
+#elif DATA_LAYOUT == ROW_MAJOR
 const auto FlatIndex = RowMajorFlatIndex;
 const auto TensorIndex = RowMajorTensorIndex;
 const auto ModeStride = RowMajorModeStride;
+#endif
 
 
 
@@ -186,13 +243,15 @@ std::vector<size_t> ModeTensorIndex(size_t mode_k,
                                     size_t mode_flat_index,
                                     const std::vector<size_t>& tensor_size);
 
+// \todo should choose a new name for arbitrary slicing, as Slice appears to refer
+// (by Kolda and others) to the case when two indices are sliced
 size_t SliceStride(const std::vector<size_t>& slice_modes, 
                    const std::vector<size_t>& tensor_size);
 
 /**
  * Generalizes ModeTensorIndex, which corresponds to passing a single mode to slice_modes
  */
-std::vector<size_t> SliceTensorIndex(const std::vector<size_t>& slice_modes,
+std::vector<size_t> SliceIndex(const std::vector<size_t>& slice_modes,
                                      size_t slice_flat_index,
                                      const std::vector<size_t>& tensor_size);
 
@@ -204,11 +263,9 @@ size_t CoSliceStride(const std::vector<size_t>& coslice_modes,
 /**
  * Slices the modes not in coslice_modes
  */
-std::vector<size_t> CoSliceTensorIndex(const std::vector<size_t>& coslice_modes,
+std::vector<size_t> CoSliceIndex(const std::vector<size_t>& coslice_modes,
                                      size_t coslice_flat_index,
                                      const std::vector<size_t>& tensor_size);
-
-
 
 
 } // OPS

@@ -9,7 +9,7 @@ src := $(wildcard $(srcdir)/*.cpp)
 obj := $(src:$(srcdir)/%.cpp=$(objdir)/%.o)
 
 third := thirdparty
-incs := 
+incs := -I/usr/local/include/eigen3  
 
 LDFLAGS := 
 LDLIBS := 

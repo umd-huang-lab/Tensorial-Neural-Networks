@@ -219,7 +219,7 @@ int main() {
 */
 
 
-
+/*
     {
     Tensor X({2,2,3});
     X[{0,0,0}] = 1; X[{0,1,0}] = 2;
@@ -230,6 +230,9 @@ int main() {
 
     X[{0,0,2}] =-5; X[{0,1,2}] = 1;
     X[{1,0,2}] =-1; X[{1,1,2}] = 5;
+
+    // In COL_MAJOR X is 1 0 2 1 0 -1 1 3 -5 -1 1 5
+    // In ROW_MAJOR X is 1 0 -5 2 1 1 0 -1 -1 1 3 5
 
     std::cout << X.FlatString() << "\n";
     X.SwapAxes(0,1);
@@ -245,6 +248,117 @@ int main() {
     X.SwapAxes(0,1);
     std::cout << X.FlatString() << "\n";
     }
+*/
+
+/*
+    {
+    // Kolda writes on page 461 that MultiplyMatrix is independent of the 
+    // multiplication order for different modes
+
+    Tensor X({2,2,3});
+    X[{0,0,0}] = 1; X[{0,1,0}] = 2;
+    X[{1,0,0}] = 0; X[{1,1,0}] = 1;
+
+    X[{0,0,1}] = 0; X[{0,1,1}] = 1;
+    X[{1,0,1}] =-1; X[{1,1,1}] = 3;
+
+    X[{0,0,2}] =-5; X[{0,1,2}] = 1;
+    X[{1,0,2}] =-1; X[{1,1,2}] = 5;
+    
+    Tensor A({2,2});
+    A[{0,0}] = 2; A[{0,1}] = 0;
+    A[{1,0}] = 0; A[{1,1}] = 2;
+
+    Tensor B({3,2});
+    B[{0,0}] = 2; B[{0,1}] = 0;
+    B[{1,0}] = 0; B[{1,1}] = 2;
+    B[{2,0}] = 2; B[{2,1}] = 2;
+    {
+    Tensor t1 = MultiplyMatrix(1, X, A);
+    t1 = MultiplyMatrix(2, t1, B);
+
+    Tensor t2 = MultiplyMatrix(2, X, B);
+    t2 = MultiplyMatrix(1, t2, A); 
+    std::cout << "t1: " << t1.FlatString() << "\n";
+    std::cout << "t2: " << t2.FlatString() << "\n";
+    std::cout << "dist(t1, t2) = " << (Norm(t1 - t2)) << "\n";
+    }
+    {
+    // Note that Kolda has different conventions for multiply matrix than us...
+    // The difference implies a difference in the identity for same mode subsequent 
+    // matrix mulpliplies 
+    // Hers says X x_n B x_n A = X x_n (AB)
+    // whereas ours says X x_n B x_n A = X x_n (BA) (associativity of the action)
+    // 
+    Tensor t1 = MultiplyMatrix(2, X, B);
+    t1 = MultiplyMatrix(2, t1, A);
+
+    Tensor BA = Contract(1, 0, B, A);
+    Tensor t2 = MultiplyMatrix(2, X, BA);
+
+    std::cout << "t1: " << t1.FlatString() << "\n";
+    std::cout << "t2: " << t2.FlatString() << "\n";
+    std::cout << "dist(t1, t2) = " << (Norm(t1 - t2)) << "\n";
+    }
+    {
+    // confirming MultiplyMatrix agrees with normal matrix multiplication
+     
+    Tensor BA1 = Contract(1, 0, B, A);
+    Tensor BA2 = MultiplyMatrix(1, B, A);
+    std::cout << "BA1: " << BA1.FlatString() << "\n";
+    std::cout << "BA2: " << BA2.FlatString() << "\n";
+    std::cout << "dist(BA1, BA2) = " << (Norm(BA1 - BA2)) << "\n";
+    }
+    }
+*/
+/*
+    {
+    Tensor M({2,3});
+    M[{0,0}] = 12; M[{0,1}] = 108; M[{0,2}] = 12;
+    M[{1,0}] = 31; M[{1,1}] = 100; M[{1,2}] = 35;
+
+    Tensor S({3,2});
+    S[{0,0}] = M[{0,0}]; S[{1,0}] = M[{0,1}]; S[{2,0}] = M[{0,2}];
+    S[{0,1}] = M[{1,0}]; S[{1,1}] = M[{1,1}]; S[{2,1}] = M[{1,2}];
+
+    std::cout << "Norm(M^T - S) = " << Norm(M.SwappedAxes(0,1) - S) << "\n";
+    }
+*/
+
+
+
+    {
+    
+    Tensor M({3,3});
+    M[{0,0}] = 9; M[{0,1}] = 10; M[{0,2}] = 1022;
+    M[{1,0}] = 7; M[{1,1}] = 41; M[{1,2}] =-10930;
+    M[{2,0}] = 1209; M[{2,1}] = -8; M[{2,2}] = 10954;
+    
+    /* 
+    Tensor M({2,2});
+    M[{0,0}] = 1; M[{0,1}] = 1; 
+    M[{1,0}] = 0; M[{1,1}] = 1;
+    */
+
+    std::cout << "M: " << M.FlatString() << " with tensor size: " << M.TensorSize() << "\n";
+
+    Tensor M_copy = M;
+    M_copy.SetPseudoInverseTranspose(0, 1, {0,0});
+
+    std::cout << "M Pseudo Inverse Transpose: " << M_copy.FlatString() << " with tensor size: " << M_copy.TensorSize() << "\n";
+
+    Tensor P = M_copy.SwappedAxes(0, 1);
+    std::cout << "M Pseudo Inverse: " << P.FlatString() << " with tensor size: " << P.TensorSize() << "\n";
+
+
+    Tensor I = Contract(1, 0, M, P);
+    Tensor I2 = Contract(1, 0, P, M);
+    std::cout << "M * P = " << I.FlatString() << "\n";
+    std::cout << "P * M = " << I2.FlatString() << "\n";
+    std::cout << "Norm(P*M - M*P): " << Norm(I - I2) << "\n";
+
+    }
+
 
 
     return 0;
