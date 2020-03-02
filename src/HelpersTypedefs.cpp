@@ -1,6 +1,9 @@
+#include <iostream>
+
 #include <cmath>
 #include <ostream>
 #include <limits>
+#include <numeric>
 
 #include "HelpersTypedefs.h"
 
@@ -31,6 +34,15 @@ bool Equals(float a, float b, float precision) {
 
 float PMod(float numer, float denom) {
     return std::fmod(std::fmod(numer, denom) + denom, denom);
+}
+
+
+size_t MultiplyElements(const std::vector<size_t>& iterable) {
+    if(iterable.size() == 0) {
+        std::cout << "returning 1\n";
+        return 1;
+    }
+    return (std::accumulate(std::begin(iterable), std::end(iterable), 1, std::multiplies<float>()));
 }
 
 } // OPS

@@ -17,8 +17,11 @@
 
 namespace OPS {
 
+class TensorNetworkDefinition;
+struct CPDDecompOut;
 
-// Just assuming scalars are floats for now.... 
+
+// Just assuming scalars are floats for now.... we can make this a template  
 // \todo read this
 // https://eigen.tuxfamily.org/dox/TopicCustomizing_CustomScalar.html
 // and see how they handle arbitrary scalar types
@@ -29,9 +32,11 @@ namespace OPS {
 // probably these implementations will all be naive in a number of ways... they're mostly
 // just to get me going... also I'm not sure yet about what variety of tensors actually need
 // support
+
+// \todo need to support order 0 tensors
 class Tensor {
     public:
-
+        friend class TensorNetworkDefinition;
         Tensor() = default; 
                   //  a tensor without tensor_size is in an 
                   //  unusable state, but people could expect Tensors to behave like
@@ -49,7 +54,7 @@ class Tensor {
          * tensor_size[i] is the size of the ith mode, 
          * tensor_size.size() is the order of the tensor
          */
-        Tensor(std::vector<size_t> tensor_size);
+        explicit Tensor(std::vector<size_t> tensor_size);
         ~Tensor() = default;
 
         // \todo look into what Eigen does for copying
@@ -60,10 +65,10 @@ class Tensor {
         Tensor(Tensor&&) = default;
         
 
-
-
         float& operator[](const std::vector<size_t>& tensor_index);
+        const float& operator[](const std::vector<size_t>& tensor_index) const;
         float& operator[](size_t flat_index);
+        const float& operator[](size_t flat_index) const;
 
         Tensor operator+(const Tensor& ot);
         Tensor& operator+=(const Tensor& ot);
@@ -76,6 +81,7 @@ class Tensor {
 
         
         void SetZero();
+        void SetUniformRandom(float lower_bound, float upper_bound); 
 
         /**
          * Swaps the given modes so that T(..., k, ..., l, ...) -> T(..., l, ..., k, ...)
@@ -110,10 +116,13 @@ class Tensor {
          */
         friend float InnerProduct(const Tensor& x, const Tensor& y);  
         
+        friend CPDDecompOut CPDecompALSOrder3(const Tensor& t, size_t rank);
 
         /**
          * Replaces the matrix at the given slice_index with its pseudo inverse. 
          * (slice_mode1, slice_mode2) specifies the modes which the matrices occupy
+         * Baiscally lets you do the pseudo inverse operation in place, without reserving
+         * new memory.
          *
          * expects slice_mode1 < slice_mode2.... why though? \todo
          *
@@ -125,6 +134,8 @@ class Tensor {
          */
         void SetPseudoInverseTranspose(size_t slice_mode1, size_t slice_mode2, 
                               std::vector<size_t> slice_index); 
+        Tensor CalcPseudoInverse(size_t slice_mode1, size_t slice_mode2,
+                                 std::vector<size_t> slice_index);
 
         std::string FlatString() const;
 

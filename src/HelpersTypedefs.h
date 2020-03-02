@@ -37,6 +37,8 @@ int Sign(T x) {
     return (T(0) < x) - (x < T(0));
 }
 
+size_t MultiplyElements(const std::vector<size_t>& iterable);
+
 // \todo unused/untested
 template<typename T>
 std::vector<T> WithOrderedIndicesRemoved(const std::vector<T>& vec, std::vector<size_t> ordered_indices) {

@@ -3,6 +3,7 @@
 #include "Profiling.h"
 #include "HelpersTypedefs.h"
 #include "Tensor.h"
+#include "TensorNetwork.h"
 
 #define DEBUG
 
@@ -326,19 +327,18 @@ int main() {
 */
 
 
-
-    {
-    
+/*
+    { 
     Tensor M({3,3});
     M[{0,0}] = 9; M[{0,1}] = 10; M[{0,2}] = 1022;
     M[{1,0}] = 7; M[{1,1}] = 41; M[{1,2}] =-10930;
     M[{2,0}] = 1209; M[{2,1}] = -8; M[{2,2}] = 10954;
     
-    /* 
-    Tensor M({2,2});
-    M[{0,0}] = 1; M[{0,1}] = 1; 
-    M[{1,0}] = 0; M[{1,1}] = 1;
-    */
+    // 
+    //Tensor M({2,2});
+    //M[{0,0}] = 1; M[{0,1}] = 1; 
+    //M[{1,0}] = 0; M[{1,1}] = 1;
+    //
 
     std::cout << "M: " << M.FlatString() << " with tensor size: " << M.TensorSize() << "\n";
 
@@ -350,6 +350,10 @@ int main() {
     Tensor P = M_copy.SwappedAxes(0, 1);
     std::cout << "M Pseudo Inverse: " << P.FlatString() << " with tensor size: " << P.TensorSize() << "\n";
 
+    Tensor P2 = M.CalcPseudoInverse(0, 1, {0,0});
+    std::cout << "M Pseudo Inverse by CalcPseudoInverse: " << P2.FlatString() 
+              << " with tensor size: " << P2.TensorSize() << "\n";
+    std::cout << "Norm(P - P2): " << Norm(P - P2) << "\n";
 
     Tensor I = Contract(1, 0, M, P);
     Tensor I2 = Contract(1, 0, P, M);
@@ -358,8 +362,63 @@ int main() {
     std::cout << "Norm(P*M - M*P): " << Norm(I - I2) << "\n";
 
     }
+*/
 
 
+    {
+    TensorNetworkDefinition network;
+    network.AddNode("A", 2);
+    network.AddNode("B", 3);
+    network.AddEdge("i", "A", 0, "B", 0); 
+    network.AddEdge("j", "A", 1, "B", 1); 
+
+    Tensor A({2,2});
+    A[{0,0}] = 1; A[{0,1}] = 2;
+    A[{1,0}] = 3; A[{1,1}] = 4;
+
+    Tensor B({2,2,2});
+    B[{0,0,0}] = 5; B[{0,1,0}] = 6;
+    B[{1,0,0}] = 7; B[{1,1,0}] = 8;
+
+    B[{0,0,1}] = 9; B[{0,1,1}] = 10;
+    B[{1,0,1}] = 11; B[{1,1,1}] = 12;
+
+
+    Tensor out = network.Evaluate({std::move(A), std::move(B)});
+
+    std::cout << "out order: " << out.Order() << "\n";
+    std::cout << "out tensor_size: " << out.TensorSize() << "\n";
+    std::cout << "out tensor_size.size(): " << out.TensorSize().size() << "\n";
+
+    std::cout << out.FlatString() << "\n";
+
+    }
+
+/*
+    {
+
+    TensorNetworkDefinition network;
+    network.AddNode("A", 1);
+    network.AddNode("B", 2);
+    network.AddEdge("i", "A", 0, "B", 0); 
+    Tensor A({2}); 
+    A[0] = 1; A[1] = 2;
+
+    Tensor B({2,1});
+    B[{0,0}] = 3; B[{1,0}] = 4;
+
+    Tensor out = network.Evaluate({std::move(A), std::move(B)});
+
+    std::cout << "out order: " << out.Order() << "\n";
+    std::cout << "out tensor_size: " << out.TensorSize() << "\n";
+    std::cout << "out tensor_size.size(): " << out.TensorSize().size() << "\n";
+
+    std::cout << out.FlatString() << "\n";
+
+
+
+    }
+*/
 
     return 0;
 }

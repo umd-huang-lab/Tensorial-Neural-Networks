@@ -1,8 +1,8 @@
 #include <iostream>
-#include <cmath>
-#include <utility>
-#include <numeric>
 #include <sstream>
+#include <cmath>
+#include <random>
+#include <utility>
 #include <memory>
 
 #include "Tensor.h"
@@ -11,14 +11,15 @@
 namespace OPS {
 
 
-size_t MultiplyElements(const std::vector<size_t>& iterable) {
-    return (std::accumulate(std::begin(iterable), std::end(iterable), 1, std::multiplies<float>()));
-}
+
 
 Tensor::Tensor(std::vector<size_t> tensor_size_in) 
     : tensor_size(std::move(tensor_size_in)), 
       num_components(tensor_size.size() == 0 ? 0 : MultiplyElements(tensor_size)),
-      data(std::make_unique<float[]>(NumComponents())) {}
+      data(std::make_unique<float[]>(NumComponents())) 
+{
+    
+}
 
 
 
@@ -243,6 +244,21 @@ float& Tensor::operator[](const std::vector<size_t>& tensor_index) {
     return data[flat_index];
 }
 
+const float& Tensor::operator[](const std::vector<size_t>& tensor_index) const {  
+
+    size_t flat_index = FlatIndex(tensor_index, tensor_size);
+    #ifdef DEBUG
+    if(flat_index >= NumComponents()) {
+        std::stringstream ss; 
+        ss << tensor_index;
+        std::cerr << "Error Tensor::operator[]: flat_index >= NumComponents() "
+                     " flat_index == " << flat_index << " tensor_index == " << ss.str() << "\n";
+    }
+    #endif // DEBUG
+    return data[flat_index];
+}
+
+
 float& Tensor::operator[](size_t flat_index) {
     #ifdef DEBUG
     if(flat_index >= NumComponents()) {
@@ -252,6 +268,21 @@ float& Tensor::operator[](size_t flat_index) {
    
     return data[flat_index];
 }
+
+
+
+const float& Tensor::operator[](size_t flat_index) const {
+    #ifdef DEBUG
+    if(flat_index >= NumComponents()) {
+        std::cerr << "Error Tensor::operator[]: flat_index >= NumComponents()\n";
+    }
+    #endif // DEBUG
+   
+    return data[flat_index];
+
+}
+
+
 
 void Tensor::Resize(std::vector<size_t> tensor_size_in) {
     #ifdef DEBUG
@@ -267,6 +298,17 @@ void Tensor::Resize(std::vector<size_t> tensor_size_in) {
 void Tensor::SetZero() {
     for(size_t i = 0; i < num_components; i++) {
         data[i] = 0;
+    }
+}
+
+void Tensor::SetUniformRandom(float lower_bound, float upper_bound) {
+
+    std::random_device rd;
+    std::mt19937 gen;
+
+    static std::uniform_real_distribution<float> dist(lower_bound, upper_bound); 
+	for(size_t i = 0, N = NumComponents(); i < N; i++) {
+        data[i] = dist(gen);
     }
 }
 
@@ -648,6 +690,26 @@ float InnerProduct(const Tensor& x, const Tensor& y) {
 float Norm(const Tensor& x) {
     return std::sqrt(InnerProduct(x, x));
 }
+
+
+/*
+CPDDecompOut CPDDecompALSOrder3(const Tensor& X, size_t rank) {
+    #ifdef DEBUG
+    if(X.Order() != 3) {
+        std::cerr << "Error CPDDecompALSOrder3: X.Order() != 3\n";
+    }
+    #endif // DEBUG
+
+    Tensor A({X.tensor_size[0], X.tensor_size[1] rank}); // factor matrices
+
+	A.SetUniformRandom(0, 1);
+
+	size_t num_iterations = 5;
+
+}
+*/
+
+
 
 size_t Tensor::Order() const {
     return tensor_size.size(); 
