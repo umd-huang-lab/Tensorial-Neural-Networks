@@ -1,4 +1,5 @@
 #include <iostream>
+#include <utility>
 
 #include "TensorNetwork.h"
 #include "Tensor.h"
@@ -20,26 +21,82 @@ void TensorNetworkDefinition::AddNode(std::string name, size_t order) {
     nodes.push_back(order);     
     node_name_index[name] = nodes.size()-1;
 }
- 
-void TensorNetworkDefinition::AddEdge(std::string name,
-                                      std::string node1_name, size_t node1_mode, 
-                                      std::string node2_name, size_t node2_mode,
-                                      Operation operation) 
-{
-    // \todo should add error checks
 
-    edges.push_back({
-        node_name_index[node1_name],
-        node1_mode,
-        node_name_index[node2_name],
-        node2_mode
-    });
+void TensorNetworkDefinition::AddNodeOutputMode(std::string node_name, 
+                                                size_t node_mode, size_t output_mode) 
+{
+    // \todo error checks     
+    // it should be an error if they eventually call Evaluate and not all of the output
+    // modes have been filled, ... this takes some more thought
+
+	// insert in order of output_mode 
+
+    OutputMode om; om.output_mode = output_mode;
+	auto insert_pos = std::upper_bound(output_modes.begin(), output_modes.end(),
+									   om, // \todo this is strange 
+									   [](const OutputMode& a, const OutputMode& b) {
+											return a.output_mode < b.output_mode;
+									   });
+	output_modes.insert(insert_pos, 
+						{node_name_index[node_name], output_mode, false, node_mode});
+}
+
+
+void TensorNetworkDefinition::AddEdge(std::string edge_name,
+                                      std::vector<NodeMode> edge_parts,
+                                      Operation operation,
+                                      int output_mode)
+{
+
+    // \todo should add error checks
+    
+    std::vector<InternalEdgePart> internal_edge_parts;
+    internal_edge_parts.reserve(edge_parts.size());
+    for(size_t i = 0; i < edge_parts.size(); i++) {
+        InternalEdgePart part = {
+            node_name_index[edge_parts[i].node_name],
+            edge_parts[i].mode,
+            //edge_parts[i].operation
+            operation
+        };
+        internal_edge_parts.push_back(part);
+    }
+    
+    
+    edges.push_back({std::move(internal_edge_parts), output_mode});
 
     size_t ind = edges.size()-1;
-    edge_name_index[name] = ind;
+    edge_name_index[edge_name] = ind;
 
-    nonoutput_modes_map.push_back({edges[ind].node1_index, node1_mode});
-    nonoutput_modes_map.push_back({edges[ind].node2_index, node2_mode});
+    if(output_mode >= 0) {
+		// insert in order
+        OutputMode om; om.output_mode = output_mode;
+		auto insert_pos = std::upper_bound(output_modes.begin(), output_modes.end(),
+										   om, // \todo this is strange 
+										   [](const OutputMode& a, const OutputMode& b) {
+												return a.output_mode < b.output_mode;
+										   });
+		output_modes.insert(insert_pos, {ind, size_t(output_mode)});
+    }
+	
+	// \todo not sure if I still need this
+    if(output_mode < 0) {
+        for(size_t i = 0; i < edge_parts.size(); i++) {
+            nonoutput_modes_map.push_back({
+                node_name_index[edge_parts[i].node_name],
+                edge_parts[i].mode
+            });
+        }
+    }
+}
+
+
+
+void TensorNetworkDefinition::AddMultiOperationEdge(std::string edge_name,
+                                              std::vector<EdgePart> edge_parts,
+                                              int output_mode)
+{
+
 }
 
 
@@ -48,22 +105,11 @@ void TensorNetworkDefinition::AddEdge(std::string name,
 size_t TensorNetworkDefinition::NumNodes() {
     return nodes.size();
 }
-// \todo the outputs should be specified ahead of time
-size_t TensorNetworkDefinition::OutputOrder() {
-    //return output_modes_map.size();
-    size_t sum = 0;
-    for(size_t i = 0; i < nodes.size(); i++) {
-        sum += nodes[i];
-    }
-
-    return sum - edges.size() * 2;
-}
-
 
 bool TensorNetworkDefinition::HasOnlyContraction() {
     
     for(size_t i = 0; i < edges.size(); i++) {
-        if(edges[i].operation != Operation::CONTRACTION) {
+        if(!edges[i].HasOnlyContraction()) {
             return false;
         }
     }
@@ -73,87 +119,72 @@ bool TensorNetworkDefinition::HasOnlyContraction() {
 
 
 
-std::vector<std::vector<size_t>> TensorNetworkDefinition::CalcOutputModesMap() {
-    
-    std::vector<std::vector<size_t>> output_modes_map; 
-
-    for(size_t i = 0; i < nodes.size(); i++) { 
-        size_t node_order = nodes[i];
-        for(size_t j = 0; j < node_order; j++) {
-            bool is_nonoutput_mode = false;
-            for(size_t k = 0; k < nonoutput_modes_map.size() && !is_nonoutput_mode; k++) {
-                std::vector<size_t> node_mode_pair = nonoutput_modes_map[k];
-
-                if(node_mode_pair[0] == i && node_mode_pair[1] == j) {
-                    is_nonoutput_mode = true;
-                }
-            }
-            if(!is_nonoutput_mode) {
-                output_modes_map.push_back({i, j});
-            }
+bool TensorNetworkDefinition::HasNoMultiOperationEdges() {
+     
+    for(size_t i = 0; i < edges.size(); i++) {
+        if(!edges[i].HasSingleOperation()) {
+            return false;
         }
     }
 
-    return output_modes_map;
+    return true;           
 }
 
 
 
-// \todo remove this
+
+// \todo might consider inlining this 
+std::vector<size_t> 
+TensorNetworkDefinition::CalcOutputTensorSize(const std::vector<Tensor>& tensors) {
+    std::vector<size_t> output_tensor_size(output_modes.size());
+ 
+	for(size_t i = 0; i < output_modes.size(); i++) {
+        OutputMode& o = output_modes[i];
+        if(o.is_edge) {
+            size_t edge_node0_index = edges[o.index].edge_parts[0].node_index;
+            size_t edge_node0_mode = edges[o.index].edge_parts[0].mode;
+            std::cout << "edge_node0_index: " << edge_node0_index
+                      << " ; edge_node0_mode: " << edge_node0_mode << "\n";
+            output_tensor_size[i] = tensors[edge_node0_index].tensor_size[edge_node0_mode]; 
+        } else {
+            output_tensor_size[i] = tensors[o.index].tensor_size[o.node_mode];
+        }
+	} 
+
+    return output_tensor_size;
+}
+
 /*
-std::vector<std::vector<size_t>> TensorNetworkDefinition::CalcSortedNonOutputModesMap() {
-    std::vector<std::vector<size_t>> nonoutput_modes_map;
-
-    // \todo naive for now, possibly won't be a bottleneck though (or even used)
-    // probably actually want to do this on a sorted copy of output_modes_map
-    for(size_t i = 0; i < nodes.size(); i++) { 
-        size_t node_order = nodes[i];
-        for(size_t j = 0; j < node_order; j++) {
-            bool is_output_mode = false;
-            for(size_t k = 0; k < output_modes_map.size() && !is_output_mode; k++) {
-                std::vector<size_t> node_mode_pair = output_modes_map[k];
-
-                if(node_mode_pair[0] == i && node_mode_pair[1] == j) {
-                    is_output_mode = true;
-                }
-            }
-            if(!is_output_mode) {
-                nonoutput_modes_map.push_back({i, j});
-            }
-        }
-    }
-
-    return nonoutput_modes_map;
-}
-*/
-
 Tensor TensorNetworkDefinition::EvaluateEinsumNaive(const std::vector<Tensor>& tensors) {
     // assume type information has all been checked and the inputs are valid
 
     // iterate over all output indices, and for each output index iterate over all
     // non-output indices, doing a sum of products.
+    // non-output indices correspond to operation edges
 
-    std::vector<std::vector<size_t>> output_modes_map = CalcOutputModesMap(); 
-    std::vector<size_t> out_tensor_size(OutputOrder());
+    
+    std::vector<size_t> out_tensor_size(output_modes.size()); 
+   
     for(size_t i = 0; i < out_tensor_size.size(); i++) {
-        std::vector<size_t> node_mode_pair = output_modes_map[i];
-        out_tensor_size[i] = tensors.at(node_mode_pair[0]).tensor_size[node_mode_pair[1]];
+        NodeIndexMode index_mode = output_modes_map[i];
+        out_tensor_size[i] = tensors.at(index_mode.index).tensor_size[index_mode.mode];
     }
     Tensor out(std::move(out_tensor_size));
 
     std::vector<size_t> edge_tensor_size(edges.size());
     for(size_t i = 0; i < edge_tensor_size.size(); i++) {
-        TensorNetworkEdge edge = edges[i];
-        // note the sizes are assumed equal for node1 and node2
-        edge_tensor_size[i] = tensors[edge.node1_index].tensor_size[edge.node1_mode]; 
+        std::vector<InternalEdgePart>& edge_parts = edges[i].edge_parts;
+        size_t node_index = edge_parts[0].node_index; 
+        size_t node_mode = edge_parts[0].mode;
+        // note the mode sizes are assumed equal for all the nodes in an edge
+        edge_tensor_size[i] = tensors[node_index].tensor_size[node_mode]; 
     }
     size_t num_edge_tensor_components = MultiplyElements(edge_tensor_size);
-
-    for(size_t i = 0; i < out.NumComponents(); i++) {
+    
+    for(size_t i = 0, outNumComponents = out.NumComponents(); i < outNumComponents; i++) {
         std::vector<size_t> out_ti = TensorIndex(i, out.tensor_size); 
 
         float sum = 0;
-
         for(size_t j = 0; j < num_edge_tensor_components; j++) {
             std::vector<size_t> edge_ti  = TensorIndex(j, edge_tensor_size);
            
@@ -162,21 +193,22 @@ Tensor TensorNetworkDefinition::EvaluateEinsumNaive(const std::vector<Tensor>& t
             float prod = 1;
             for(size_t k = 0; k < tensors.size(); k++) {
 
+                // k_ti is a tensor index for the kth tensor
                 std::vector<size_t> k_ti(tensors.at(k).Order());
                 for(size_t l = 0; l < output_modes_map.size(); l++) {
-                    std::vector<size_t> node_mode_pair = output_modes_map[l];   
-                    if(node_mode_pair[0] == k) {
-                        k_ti[node_mode_pair[1]] = out_ti[l];
+                    NodeIndexMode index_mode = output_modes_map[l];   
+                    if(index_mode.index == k) {
+                        k_ti[index_mode.mode] = out_ti[l];
                     }
                 }
 
                 for(size_t l = 0; l < edges.size(); l++) {
-                    TensorNetworkEdge edge = edges[l];
-
-                    if(edge.node1_index == k) {
-                        k_ti[edge.node1_mode] = edge_ti[l];
-                    } else if(edge.node2_index == k) {
-                        k_ti[edge.node2_mode] = edge_ti[l];
+                    std::vector<InternalEdgePart>& edge_parts = edges[l].edge_parts;
+                  
+                    for(size_t m = 0; m < edge_parts.size(); m++) {
+                        if(edge_parts[m].node_index == k) {
+                            k_ti[edge_parts[m].mode] = edge_ti[l];
+                        }
                     }
                 }
 
@@ -191,6 +223,329 @@ Tensor TensorNetworkDefinition::EvaluateEinsumNaive(const std::vector<Tensor>& t
 
     return out;
 }
+*/
+
+
+
+Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor>& tensors) {
+
+    std::cout << "Evaluating conv naive\n";
+
+    // assume type information has all been checked and the inputs are valid
+
+    // \todo rename "operation" to something evoking the summation_indices in the forall sum
+    // \todo could try to precompute some of this setup, (the parts not using tensors directly)
+    //       it depends on how the user wants to call this.
+    // \todo there's some code duplication, could thing about factoring things out, or better,
+    //       reorganizing the code paths so eliminate separate paths doing the same thing 
+    std::vector<size_t> out_tensor_size = CalcOutputTensorSize(tensors);  
+    std::cout << "out_tensor_size: " << out_tensor_size << "\n";
+    Tensor out(std::move(out_tensor_size));
+
+    
+    std::vector<size_t> op_ind2edge_ind_map; 
+    for(size_t i = 0; i < edges.size(); i++) {
+        std::cout << "edges[i].output_mode: " << edges[i].output_mode << "\n";
+        if(edges[i].output_mode < 0) {
+            op_ind2edge_ind_map.push_back(i);
+        }
+    }
+    std::cout << "op_ind2edge_ind_map: " << op_ind2edge_ind_map << "\n";
+    
+    std::vector<size_t> operation_tensor_size(op_ind2edge_ind_map.size());
+    std::cout << "operation_tensor_size.size(): " << operation_tensor_size.size() << "\n";
+    for(size_t i = 0; i < operation_tensor_size.size(); i++) {
+        size_t edge_ind = op_ind2edge_ind_map[i];
+
+        size_t node_ind = edges[edge_ind].edge_parts[0].node_index;
+        size_t node_mode = edges[edge_ind].edge_parts[0].mode;
+        operation_tensor_size[i] = tensors[node_ind].tensor_size[node_mode]; 
+    }
+    size_t num_operation_tensor_components = MultiplyElements(operation_tensor_size);
+    // MultiplyElements returns 1 if operation_tensor_size is empty, so the loop will
+    // run at least one time
+
+    std::vector<size_t> conv_parts_tensor_size;
+    std::vector<std::pair<size_t, size_t>> conv_parts_intervals;
+
+    
+    for(size_t i = 0; i < edges.size(); i++) {
+        if(edges[i].HasOnlyConvolution()) {
+            size_t first = conv_parts_tensor_size.size();
+            size_t node_ind = edges[i].edge_parts[0].node_index;
+            size_t node_mode = edges[i].edge_parts[0].mode;
+            size_t mode_size = tensors[node_ind].tensor_size[node_mode];
+
+            // the number of implicit indices is one less than the number of edge parts
+            for(size_t j = 0; j < edges[i].edge_parts.size()-1; j++) {
+                conv_parts_tensor_size.push_back(mode_size);
+            }
+
+            size_t last = conv_parts_tensor_size.size();
+            conv_parts_intervals.push_back(std::pair<size_t, size_t>(first, last));
+
+        } else { // not supporting mixed edges yet
+            conv_parts_intervals.push_back(std::pair<size_t, size_t>(0, 0));
+            // want conv_parts_intervals to correspond to edges
+        }
+    }
+    size_t num_conv_parts_tensor_components = MultiplyElements(conv_parts_tensor_size);
+    // if conv_parts_tensor_size is empty then MultiplyElements returns 1 and so the loop
+    // will run at least once
+
+    ////////////////////////////////////////////////
+    // Initialize kth_tensor_modes_info
+    // This can be computed directly from the einsum description
+
+    
+    // OUT is a mode appearing to the right of the arrow in an einsum (parameterized by the
+    // for all symbol),
+    // OPERATION is an explicit mode not appearing to the right of the arrow 
+    // (parameterized by the summation symbol and not an implicit convolution index)
+    // IMPLICIT is an implicit convolution index
+    enum class ModeType { OUT, OPERATION, IMPLICIT };
+
+    /**
+     *  this struct describes the formal data of a subscript
+     *  index into output_modes array (OUT), op_ind2edge_ind_map (OPERATION) 
+     *  or edges (IMPLICIT) 
+     */
+    struct ModeInfo {
+        ModeType mode_type;   
+        size_t index; 
+        size_t implicit_offset;
+    };
+
+    // calculate for each k a vector containing structs which specify the formal
+    // subscript for that given mode
+    // the following vector of vectors essentially encapsulates the input from einsum
+    std::vector<std::vector<ModeInfo>> kth_tensor_modes_info(nodes.size());
+    for(size_t k = 0; k < nodes.size(); k++) {
+        kth_tensor_modes_info[k].resize(nodes[k]);       
+    }
+
+
+    { 
+        std::cout << "output_modes.size(): " << output_modes.size() << "\n";
+        for(size_t l = 0; l < output_modes.size(); l++) {
+            OutputMode om = output_modes[l];
+            if(om.is_edge) {
+                Operation single_op;
+                if(edges[om.index].HasSingleOperation(&single_op)) {
+                std::vector<InternalEdgePart>& edge_parts = edges[om.index].edge_parts; 
+
+                if(single_op == Operation::CONVOLUTION) {    
+                    size_t m = 0;
+                    for(; m < edge_parts.size()-1; m++) {
+                        size_t k = edge_parts[m].node_index;
+                        kth_tensor_modes_info[k][edge_parts[m].mode] 
+                            = {ModeType::IMPLICIT, om.index, m};
+                    }
+
+                    size_t k = edge_parts[m].node_index;
+                    kth_tensor_modes_info[k][edge_parts[m].mode] = {ModeType::OUT, l};
+
+                } else { // Operation::CONTRACTION
+                    for(size_t m = 0; m < edge_parts.size(); m++) {
+                        size_t k = edge_parts[m].node_index;
+                        kth_tensor_modes_info[k][edge_parts[m].mode] = {ModeType::OUT, l};  
+                    }
+                }
+
+                } else {
+                    std::cerr << "Not supporting multiedges yet\n";
+                }
+            } else {
+                kth_tensor_modes_info[om.index][om.node_mode] = {ModeType::OUT, l};
+            }
+        }
+    }
+
+    for(size_t l = 0; l < op_ind2edge_ind_map.size(); l++) {
+        
+        size_t edge_ind = op_ind2edge_ind_map[l];
+        std::vector<InternalEdgePart>& edge_parts = edges[edge_ind].edge_parts; 
+        size_t cur_conv_part = 0;
+        size_t num_conv_parts = edges[l].NumConvolutionParts();
+        
+
+        for(size_t m = 0; m < edge_parts.size(); m++) {
+            size_t k = edge_parts[m].node_index;
+
+            if(edge_parts[m].operation == Operation::CONTRACTION
+               || cur_conv_part == num_conv_parts-1) 
+            {
+                // \todo think about renaming operation/implicit
+                kth_tensor_modes_info[k][edge_parts[m].mode] 
+                    = {ModeType::OPERATION, l}; 
+            } else { 
+                
+                kth_tensor_modes_info[k][edge_parts[m].mode]
+                    = {ModeType::IMPLICIT, edge_ind, m};
+            }
+ 
+            if(edge_parts[m].operation == Operation::CONVOLUTION) {
+                cur_conv_part++;
+            }                       
+                
+            kth_tensor_modes_info[k][edge_parts[m].mode] = {ModeType::OPERATION, l};  
+        }
+        
+    }
+
+    
+   
+     
+    // Initialize kth_tensor_modes_info 
+    ////////////////////////////////////////////////
+   
+    // run the loop at least once to handle when the output tensor is a scalar
+    for(size_t i = 0, outNumComponents = out.NumComponents();
+        i < outNumComponents || i == 0; i++) 
+    {
+    std::vector<size_t> out_ti = TensorIndex(i, out.tensor_size);
+        // the components of out_ti correspond to the elements of output_modes
+
+    
+    float sum = 0;
+    for(size_t j = 0; j < num_operation_tensor_components; j++) {
+    std::vector<size_t> op_ti = TensorIndex(j, operation_tensor_size); 
+    // the components of op_ti corresponds to the elements of edges
+    // actually this is not true anymore, since edges can have output modes
+    // as stands, corresponds to the elements of edges which don't have output modes
+    // you can index the jth "edge without output mode" by 
+    // edge[op_ind2edge_ind_map[j]]
+
+    for(size_t j1 = 0; j1 < num_conv_parts_tensor_components; j1++) {
+    std::vector<size_t> conv_parts_ti = TensorIndex(j1, conv_parts_tensor_size);    
+    // the components of conv_parts_ti correspond to the elements of the array obtained
+    // by appending in order the convolution edge parts of each edge, except for 
+    // the last convolution part of each edge.
+    
+    // you need to iterate over Operation indices x Implicit indices, so it makes
+    // sense that there could be a multiplicative, double, for-loop 
+    
+        float prod = 1;
+        for(size_t k = 0; k < tensors.size(); k++) {
+            // k_ti is a tensor index for the kth tensor
+            std::vector<size_t> k_ti(tensors.at(k).Order(), 0);
+            std::vector<ModeInfo>& modes_info = kth_tensor_modes_info[k];
+
+            for(size_t l = 0; l < k_ti.size(); l++) {
+                // calculate the index at the lth mode of the kth tensor
+                // \todo is it possible to remove these conditional branches from
+                //       this innermost loop?
+
+                ModeInfo mode_info = modes_info[l];
+                switch(mode_info.mode_type) {
+                case ModeType::OUT: {
+                    OutputMode output_mode_info = output_modes[mode_info.index];
+                    if(output_mode_info.is_edge) {
+                        size_t edge_ind = output_mode_info.index;
+                        Edge& output_mode_edge = edges[edge_ind];
+
+                        Operation single_op;
+                        if(output_mode_edge.HasSingleOperation(&single_op)) {
+                            if(single_op == Operation::CONVOLUTION) {
+                                // of the form i - i1 - i2 - i3
+                                size_t mode_size = output_mode_edge.GetModeSize(tensors);
+                                size_t out_ind = out_ti[output_mode_info.output_mode];
+
+                                std::pair<size_t, size_t> 
+                                interval = conv_parts_intervals[edge_ind];
+                                std::cout << "interval: " << interval.first << ", "
+                                                          << interval.second << "\n";
+                                size_t conv_ind_sum = 0;
+                                for(size_t cis = interval.first; cis < interval.second; cis++) {
+                                    conv_ind_sum += conv_parts_ti[cis];
+                                }
+                                std::cout << "out_ind: " << out_ind << " ; "
+                                          << "conv_ind_sum: " << conv_ind_sum << "\n";
+                                k_ti[l] = PModi(out_ind - conv_ind_sum, mode_size);
+                                std::cout << " ; k_ti.size(): " << k_ti.size() 
+                                          << " ; mode_size: " << mode_size
+                                          << " ; k_ti[" << l << "]: " << k_ti[l] << "\n";
+
+                            } else { // Operation::CONTRACTION
+                                // of the form i
+                                k_ti[l] = out_ti[output_mode_info.output_mode];
+                            }
+                        } else {
+                            // \todo
+                            std::cerr << "Multiedges not implemented\n";
+                        }
+                    } else { // output_mode is node
+                        k_ti[l] = out_ti[output_mode_info.output_mode];
+                    }
+                } break; 
+                case ModeType::OPERATION: {
+                    
+                    size_t op_ti_index = mode_info.index;
+                    size_t edge_ind = op_ind2edge_ind_map[op_ti_index];
+                    Edge& edge = edges[edge_ind]; 
+                    Operation single_op;
+                    if(edge.HasSingleOperation(&single_op)) {
+                        if(single_op == Operation::CONVOLUTION) {
+                            std::cout << "CONVOLUTINO OPERATION\n";
+                            // of the form i - i1 - i2 - i3
+                            size_t mode_size = edge.GetModeSize(tensors);
+                            size_t ind = op_ti[op_ti_index];
+
+                            std::pair<size_t, size_t> 
+                            interval = conv_parts_intervals[edge_ind];
+
+                            // \todo a subroutine for this inner forloop possibly,
+                            // make sure it gets inlined
+                            size_t conv_ind_sum = 0;
+                            for(size_t cis = interval.first; cis < interval.second; cis++) {
+                                conv_ind_sum += conv_parts_ti[cis];
+                            }
+                            k_ti[l] = PModi(ind - conv_ind_sum, mode_size);
+                        } else { // Operation::CONTRACTION
+                        
+                           
+                            k_ti[l] = op_ti[op_ti_index];
+
+                            std::cout << "CONTRACTION OPERATION ; " 
+                                      << "k_ti[" << l << "] = " << k_ti[l]
+                                      << "; op_ind2edge_ind_map[" << j << "] = " 
+                                      << op_ind2edge_ind_map[j] << "\n";
+
+                        }
+                    } else {
+                        // \todo
+                        std::cerr << "Multiedges not implemented\n";
+                    }
+                } break;
+                case ModeType::IMPLICIT: {
+
+                    std::cout << "IMPLICIT OPERATION\n";
+                    size_t edge_ind = mode_info.index;
+                    size_t conv_ind_start = conv_parts_intervals[edge_ind].first;
+                    k_ti[l] = conv_parts_ti[conv_ind_start + mode_info.implicit_offset]; 
+                } break;
+                }
+
+            }
+        
+            prod *= tensors.at(k)[k_ti]; 
+            std::cout << "k_ti.size(): " << k_ti.size() << " ; k_ti: " << k_ti << " ; prod: " << prod << "\n"; 
+        }
+        std::cout << "sum += prod: prod = " << prod << "\n\n";
+        sum += prod;
+
+    } // j1
+    } // j
+        out[out_ti] = sum;
+    }
+
+    return out;
+}
+
+
+
+
+
 
 Tensor TensorNetworkDefinition::Evaluate(const std::vector<Tensor>& tensors) {
     // runtime checks to determine the sizes are correct
@@ -208,14 +563,22 @@ Tensor TensorNetworkDefinition::Evaluate(const std::vector<Tensor>& tensors) {
     }
     
     for(size_t i = 0; i < edges.size(); i++) {
-        TensorNetworkEdge e = edges[i];      
-        bool modes_match = tensors[e.node1_index].tensor_size[e.node1_mode] 
-                            == tensors[e.node2_index].tensor_size[e.node2_mode];
+          
+        bool modes_match = true;
+        InternalEdgePart edge_part = edges[i].edge_parts[0];
+        size_t mode_size = tensors[edge_part.node_index].tensor_size[edge_part.mode];
+
+        for(size_t j = 1; j < edges[i].edge_parts.size() && modes_match; j++) {
+            edge_part = edges[i].edge_parts[j]; 
+            modes_match &= 
+                (mode_size == tensors[edge_part.node_index].tensor_size[edge_part.mode]);
+        }
+
         if(!modes_match) {
             // \todo better to output the string name of the node
-            std::cerr << "Error Evaluate: !modes_match: (node, mode) = " 
-                      << "(" << e.node1_index << ", " << e.node1_mode << "), " 
-                      << "(" << e.node2_index << ", " << e.node2_mode << ")\n";
+            std::cerr << "Error Evaluate: !modes_match\n"; 
+                      //<< "(" << e.node1_index << ", " << e.node1_mode << "), " 
+                      //<< "(" << e.node2_index << ", " << e.node2_mode << ")\n";
         }
     }
    
@@ -225,20 +588,60 @@ Tensor TensorNetworkDefinition::Evaluate(const std::vector<Tensor>& tensors) {
     // choose evaluation strategy
 
     if(HasOnlyContraction()) {
-        return EvaluateEinsumNaive(tensors);
+        //return EvaluateEinsumNaive(tensors);
+    } else if(HasNoMultiOperationEdges()) { 
+        return EvaluateCyclicConvNaive(tensors);
     } else {
         // \todo
+        
     }
 }
 
-Tensor Evaluate(std::string einsum_definition, 
-                std::map<Operation, std::string> operations,
-                const std::vector<Tensor>& tensors)
-{
-    TensorNetworkDefinition network(std::move(einsum_definition), std::move(operations));
-                                    
-    return network.Evaluate(tensors);
+
+
+
+bool TensorNetworkDefinition::Edge::HasSingleOperation(Operation* single_operation_out) {
+    Operation first_op = edge_parts[0].operation;
+    for(size_t i = 1; i < edge_parts.size(); i++) {
+        if(edge_parts[i].operation != first_op) {
+            return false;
+        }
+    }
+    if(single_operation_out != nullptr) {
+        *single_operation_out = first_op; 
+    }
+    return true;
 }
+
+bool TensorNetworkDefinition::Edge::HasOnlyContraction() {
+    Operation op;
+    bool single = HasSingleOperation(&op);
+    
+    return single && op == Operation::CONTRACTION;
+}
+
+bool TensorNetworkDefinition::Edge::HasOnlyConvolution() {
+    Operation op;
+    bool single = HasSingleOperation(&op);
+    
+    return single && op == Operation::CONVOLUTION;
+}
+
+// probably want to store this instead of computing it in an inner loop
+size_t TensorNetworkDefinition::Edge::NumConvolutionParts() {
+    size_t num_convolution_parts = 0;
+    for(size_t i = 0; i < edge_parts.size(); i++) {
+        if(edge_parts[i].operation == Operation::CONVOLUTION) {
+            num_convolution_parts++;
+        }
+    }
+    return num_convolution_parts;
+}
+
+size_t TensorNetworkDefinition::Edge::GetModeSize(const std::vector<Tensor>& tensors) {
+    return tensors[edge_parts[0].node_index].tensor_size[edge_parts[0].mode];   
+}
+
 
 
 } // OPS

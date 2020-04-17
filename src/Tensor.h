@@ -146,6 +146,7 @@ class Tensor {
         // \todo is it natural to change the sizes? If so I should have a constructor
         // which accepts just the order and a member SetTensorSize(...)
         // it looks like SetTensorSize would be called Reshape in the literature
+        // \todo an empty tensor_size should denote a scalar, and num_components should be 1
  
         size_t num_components;
 

@@ -30,10 +30,15 @@ class Tensor;
 
 enum class Operation {
     CONTRACTION,
-    CONVOLUTION // multiple convolution types? or perhaps this needs to be generic
+    CONVOLUTION
 };
 
+enum class ConvolutionType {
+    LINEAR,
+    CYCLIC
+};
  
+
 
 /**
  * TensorNetworkDefinition encapsulates the definition of a convolutional tensor network.
@@ -46,68 +51,151 @@ class TensorNetworkDefinition {
     TensorNetworkDefinition(std::string einsum_definition, 
                             std::map<Operation, std::string> operations);
 
-    void AddNode(std::string name, size_t order); 
+
+    void SetConvolutionType(ConvolutionType type);
+
+    void AddNode(std::string name, size_t order);
+
+    void AddNodeOutputMode(std::string node_name, size_t node_mode, size_t output_mode);
+    
+    struct NodeMode {
+        std::string node_name;
+        size_t mode;
+    };
+
+    /**
+     * If output_mode < 0 then this is not an output edge
+     */
+    void AddEdge(std::string edge_name, 
+                 std::vector<NodeMode> edge_parts,
+                 Operation operation = Operation::CONTRACTION,
+                 int output_mode = -1);
+                              
+     
  
-    void AddEdge(std::string name,
-                 std::string node1_name, size_t node1_mode, 
-                 std::string node2_name, size_t node2_mode,
-                 Operation operation = Operation::CONTRACTION);
 
-
-
-    
-
-
-    
-    Tensor Evaluate(const std::vector<Tensor>& tensors);
-    
-
-    size_t NumNodes();
-    size_t OutputOrder(); // \todo this might sound like a command instead of a getter
-    bool HasOnlyContraction();
-
-    private:
-    std::vector<size_t> nodes; // nodes<order of node>
-    struct TensorNetworkEdge {
-        size_t node1_index; 
-        size_t node1_mode; 
-        size_t node2_index; 
-        size_t node2_mode; 
+    // may want to store the index of the node here for optimization purposes
+    struct EdgePart {
+        std::string node_name; 
+        size_t mode;
         Operation operation = Operation::CONTRACTION;
     };
-    // \todo it may be easier to have an edge for every mode in the network, even if
-    // it's an output node (so is connected to only one mode) 
-    std::vector<TensorNetworkEdge> edges;
+
+    /**
+     * If output_mode < 0 then this is not an output edge 
+     */
+    void AddMultiOperationEdge(std::string edge_name, 
+                               std::vector<EdgePart> edge_parts,
+                               int output_mode = -1);
+                               
+   
+
+    //void SetOutputEdge(std::string edge_name, size_t output_mode);
+    // actually, I think they should specify if it's an output edge when they add the edge
+    
     
 
-    // the (node, mode) pair at the first index becomes the first mode in the output,
-    // the second (node, mode) pair becomes the second mode of the output, etc...
-    // defaults to the same order they're added to the network
-    // \todo you should be able to name the output modes... maybe you don't set the order of the node when you add the
-    // node, but when you add edges with only one node...
+    Tensor Evaluate(const std::vector<Tensor>& tensors);
+
+
+    size_t NumNodes();
     
-    // \todo this is redundant with edges
-    std::vector<std::vector<size_t>> nonoutput_modes_map;
-    
+    bool HasOnlyContraction();
+    bool HasNoMultiOperationEdges();
+
+    private:
+    ConvolutionType convolution_type = ConvolutionType::CYCLIC;
+
+    std::vector<size_t> nodes; // nodes<order of node> 
+
+    struct NodeIndexMode {
+        size_t index;
+        size_t mode;
+    };
+
+    struct InternalEdgePart {
+        //std::string node_name; 
+        size_t node_index;
+        size_t mode;
+        Operation operation = Operation::CONTRACTION;
+
+    };
+ 
+    struct Edge {
+        // \todo might want InternalEdgePart to store the index of the node
+        std::vector<InternalEdgePart> edge_parts;
+        int output_mode = -1; //If output_mode < 0 then it's not an output edge
+            // \todo store output_mode here?
+
+        /**
+         * If there is a single Operation type, and single_operation_out is not nullptr,
+         * then single_operation_out is set to the single Operation type 
+         */
+        bool HasSingleOperation(Operation* single_operation_out = nullptr);
+
+        bool HasOnlyContraction();
+
+        bool HasOnlyConvolution();
+
+        // probably want to store this instead of computing it in an inner loop
+        size_t NumConvolutionParts();
+        
+        size_t GetModeSize(const std::vector<Tensor>& tensors);
+
+    };  
+
+    // \todo it's perhaps better to separate the output edges and the nonoutput edges
+    // it could be best to separate all of the types of elements
+    //like std::vector<Edge> output_edges;
+    //     std::vector<Edge> nonoutput_edges;
+    // if you do this then you need to have two maps edge_name_index, and probably
+    // double the number of variables in other places
+    // an alternative is to insert the edges so that the output edges are at the beginning
+    // and the nonoutput edges are at the end. Then you have to remap edge_name_index on each
+    // insert
+
+    std::vector<Edge> edges;
+
+    /*
+     * the (node, mode) pair at the first index becomes the first mode in the output,
+     * the second (node, mode) pair becomes the second mode of the output, etc...
+     * defaults to the same order they're added to the network
+     * \todo you should be able to name the output modes... 
+     * maybe you don't set the order of the node when you add the
+     * node, but when you add edges with only one node...
+     *
+     * \todo this is redundant with edges but perhaps more accessible
+     */
+    std::vector<NodeIndexMode> nonoutput_modes_map;
+
+    struct OutputMode {
+        size_t index; // index into the node array or edge array 
+        size_t output_mode; // if I store them in order this is redundant \todo
+        bool is_edge = true; // the output mode comes from an edge
+        size_t node_mode = -1; // n/a if is_edge == true
+    };
+
+    std::vector<OutputMode> output_modes; // \todo remove nonoutput_modes_map
+    std::vector<size_t> CalcOutputTensorSize(const std::vector<Tensor>& tensors);
     
 
     // fixed length strings are a possible optimization 
     std::map<std::string, size_t> node_name_index; 
     std::map<std::string, size_t> edge_name_index; 
 
-    std::vector<std::vector<size_t>> CalcOutputModesMap();
-    std::vector<std::vector<size_t>> CalcSortedNonOutputModesMap();
+    //std::vector<NodeIndexMode> CalcNodeOutputModesMap(); 
+    
+
+    // \todo I'd like to rename this so it implies what it's trying to do, which is 
+    // to evalute the sum of products by definition
     Tensor EvaluateEinsumNaive(const std::vector<Tensor>& tensors);
 
-
-    
+    // this one is for networks which include convolution, I'm separating them because
+    // I assume the naive evaluation method may be different if convolution is involved,
+    // but I may later remove the einsum only naive function if it's a pure subset of this
+    Tensor EvaluateCyclicConvNaive(const std::vector<Tensor>& tensors);
+ 
 };
-
-
-Tensor Evaluate(std::string einsum_definition, 
-                std::map<Operation, std::string> operations,
-                const std::vector<Tensor>& tensors);
-    
 
 
 } // OPS

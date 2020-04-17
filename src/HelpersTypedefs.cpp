@@ -32,14 +32,16 @@ bool Equals(float a, float b, float precision) {
     return std::abs(a - b) < precision;
 }
 
-float PMod(float numer, float denom) {
+float PModf(float numer, float denom) {
     return std::fmod(std::fmod(numer, denom) + denom, denom);
 }
 
+size_t PModi(int numer, int denom) {
+    return ((numer % denom) + denom) % denom;
+}
 
 size_t MultiplyElements(const std::vector<size_t>& iterable) {
-    if(iterable.size() == 0) {
-        std::cout << "returning 1\n";
+    if(iterable.size() == 0) { 
         return 1;
     }
     return (std::accumulate(std::begin(iterable), std::end(iterable), 1, std::multiplies<float>()));

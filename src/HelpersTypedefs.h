@@ -29,8 +29,9 @@ bool Equals(float a, float b, float precision = DEFAULT_PRECISION);
 /**
  * Returns the positive modulus of numer mod denom
  */
-float PMod(float numer, float denom);
+float PModf(float numer, float denom);
 
+size_t PModi(int numer, int denom);
 
 template<typename T>
 int Sign(T x) {

@@ -33,8 +33,7 @@ Tensor::Tensor(const Tensor& t) {
 }
 
 Tensor& Tensor::operator=(const Tensor& t) {
-   
-   std::cout << "t.num_components " << t.num_components << "\n";
+    
     data = std::make_unique<float[]>(t.num_components); 
     for(size_t i = 0; i < t.num_components; i++) {
         data[i] = t.data[i]; 
