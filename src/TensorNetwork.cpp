@@ -22,24 +22,6 @@ void TensorNetworkDefinition::AddNode(std::string name, size_t order) {
     node_name_index[name] = nodes.size()-1;
 }
 
-void TensorNetworkDefinition::AddNodeOutputMode(std::string node_name, 
-                                                size_t node_mode, size_t output_mode) 
-{
-    // \todo error checks     
-    // it should be an error if they eventually call Evaluate and not all of the output
-    // modes have been filled, ... this takes some more thought
-
-	// insert in order of output_mode 
-
-    OutputMode om; om.output_mode = output_mode;
-	auto insert_pos = std::upper_bound(output_modes.begin(), output_modes.end(),
-									   om, // \todo this is strange 
-									   [](const OutputMode& a, const OutputMode& b) {
-											return a.output_mode < b.output_mode;
-									   });
-	output_modes.insert(insert_pos, 
-						{node_name_index[node_name], output_mode, false, node_mode});
-}
 
 
 void TensorNetworkDefinition::AddEdge(std::string edge_name,
@@ -48,8 +30,11 @@ void TensorNetworkDefinition::AddEdge(std::string edge_name,
                                       int output_mode)
 {
 
-    // \todo should add error checks
-    
+    // \todo add error checks enforcing tensor network invariants like one edge per mode
+    // \todo right now the entire network must be specified, no edges / modes are 
+    //       implicitly determined. If I go with that, should add error checks enforcing
+    //       this    
+
     std::vector<InternalEdgePart> internal_edge_parts;
     internal_edge_parts.reserve(edge_parts.size());
     for(size_t i = 0; i < edge_parts.size(); i++) {

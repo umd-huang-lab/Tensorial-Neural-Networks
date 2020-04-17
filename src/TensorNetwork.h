@@ -56,7 +56,7 @@ class TensorNetworkDefinition {
 
     void AddNode(std::string name, size_t order);
 
-    void AddNodeOutputMode(std::string node_name, size_t node_mode, size_t output_mode);
+    
     
     struct NodeMode {
         std::string node_name;
