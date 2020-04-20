@@ -128,8 +128,7 @@ TensorNetworkDefinition::CalcOutputTensorSize(const std::vector<Tensor>& tensors
         if(o.is_edge) {
             size_t edge_node0_index = edges[o.index].edge_parts[0].node_index;
             size_t edge_node0_mode = edges[o.index].edge_parts[0].mode;
-            std::cout << "edge_node0_index: " << edge_node0_index
-                      << " ; edge_node0_mode: " << edge_node0_mode << "\n";
+          
             output_tensor_size[i] = tensors[edge_node0_index].tensor_size[edge_node0_mode]; 
         } else {
             output_tensor_size[i] = tensors[o.index].tensor_size[o.node_mode];
@@ -213,8 +212,7 @@ Tensor TensorNetworkDefinition::EvaluateEinsumNaive(const std::vector<Tensor>& t
 
 
 Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor>& tensors) {
-
-    std::cout << "Evaluating conv naive\n";
+ 
 
     // assume type information has all been checked and the inputs are valid
 
@@ -223,22 +221,18 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
     //       it depends on how the user wants to call this.
     // \todo there's some code duplication, could thing about factoring things out, or better,
     //       reorganizing the code paths so eliminate separate paths doing the same thing 
-    std::vector<size_t> out_tensor_size = CalcOutputTensorSize(tensors);  
-    std::cout << "out_tensor_size: " << out_tensor_size << "\n";
+    std::vector<size_t> out_tensor_size = CalcOutputTensorSize(tensors);   
     Tensor out(std::move(out_tensor_size));
 
     
     std::vector<size_t> op_ind2edge_ind_map; 
-    for(size_t i = 0; i < edges.size(); i++) {
-        std::cout << "edges[i].output_mode: " << edges[i].output_mode << "\n";
+    for(size_t i = 0; i < edges.size(); i++) { 
         if(edges[i].output_mode < 0) {
             op_ind2edge_ind_map.push_back(i);
         }
-    }
-    std::cout << "op_ind2edge_ind_map: " << op_ind2edge_ind_map << "\n";
+    } 
     
-    std::vector<size_t> operation_tensor_size(op_ind2edge_ind_map.size());
-    std::cout << "operation_tensor_size.size(): " << operation_tensor_size.size() << "\n";
+    std::vector<size_t> operation_tensor_size(op_ind2edge_ind_map.size()); 
     for(size_t i = 0; i < operation_tensor_size.size(); i++) {
         size_t edge_ind = op_ind2edge_ind_map[i];
 
@@ -310,8 +304,7 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
     }
 
 
-    { 
-        std::cout << "output_modes.size(): " << output_modes.size() << "\n";
+    {  
         for(size_t l = 0; l < output_modes.size(); l++) {
             OutputMode om = output_modes[l];
             if(om.is_edge) {
@@ -437,20 +430,14 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
                                 size_t out_ind = out_ti[output_mode_info.output_mode];
 
                                 std::pair<size_t, size_t> 
-                                interval = conv_parts_intervals[edge_ind];
-                                std::cout << "interval: " << interval.first << ", "
-                                                          << interval.second << "\n";
+                                interval = conv_parts_intervals[edge_ind]; 
+
                                 size_t conv_ind_sum = 0;
                                 for(size_t cis = interval.first; cis < interval.second; cis++) {
                                     conv_ind_sum += conv_parts_ti[cis];
                                 }
-                                std::cout << "out_ind: " << out_ind << " ; "
-                                          << "conv_ind_sum: " << conv_ind_sum << "\n";
+                                
                                 k_ti[l] = PModi(out_ind - conv_ind_sum, mode_size);
-                                std::cout << " ; k_ti.size(): " << k_ti.size() 
-                                          << " ; mode_size: " << mode_size
-                                          << " ; k_ti[" << l << "]: " << k_ti[l] << "\n";
-
                             } else { // Operation::CONTRACTION
                                 // of the form i
                                 k_ti[l] = out_ti[output_mode_info.output_mode];
@@ -470,8 +457,7 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
                     Edge& edge = edges[edge_ind]; 
                     Operation single_op;
                     if(edge.HasSingleOperation(&single_op)) {
-                        if(single_op == Operation::CONVOLUTION) {
-                            std::cout << "CONVOLUTINO OPERATION\n";
+                        if(single_op == Operation::CONVOLUTION) { 
                             // of the form i - i1 - i2 - i3
                             size_t mode_size = edge.GetModeSize(tensors);
                             size_t ind = op_ti[op_ti_index];
@@ -490,12 +476,6 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
                         
                            
                             k_ti[l] = op_ti[op_ti_index];
-
-                            std::cout << "CONTRACTION OPERATION ; " 
-                                      << "k_ti[" << l << "] = " << k_ti[l]
-                                      << "; op_ind2edge_ind_map[" << j << "] = " 
-                                      << op_ind2edge_ind_map[j] << "\n";
-
                         }
                     } else {
                         // \todo
@@ -503,8 +483,6 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
                     }
                 } break;
                 case ModeType::IMPLICIT: {
-
-                    std::cout << "IMPLICIT OPERATION\n";
                     size_t edge_ind = mode_info.index;
                     size_t conv_ind_start = conv_parts_intervals[edge_ind].first;
                     k_ti[l] = conv_parts_ti[conv_ind_start + mode_info.implicit_offset]; 
@@ -514,13 +492,14 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
             }
         
             prod *= tensors.at(k)[k_ti]; 
-            std::cout << "k_ti.size(): " << k_ti.size() << " ; k_ti: " << k_ti << " ; prod: " << prod << "\n"; 
+            //std::cout << "k_ti: " << k_ti << " ; prod: " << prod << "\n"; 
         }
-        std::cout << "sum += prod: prod = " << prod << "\n\n";
+        //std::cout << "sum += prod: prod = " << prod << "\n\n";
         sum += prod;
 
     } // j1
     } // j
+        //std::cout << "out_ti: " << out_ti << " ; sum: " << sum << "\n\n\n";
         out[out_ti] = sum;
     }
 

@@ -568,77 +568,21 @@ int main() {
 */
 
 
-
-{
-    // \todo check if my calculation agrees with this
-    TensorNetworkDefinition network;
-    network.AddNode("A", 2);
-    network.AddNode("B", 3);
-    network.AddNode("C", 1);
-    network.AddEdge("i", {{"A", 0}, {"B", 0}}, Operation::CONVOLUTION, 0); 
-    network.AddEdge("j", {{"A", 1}, {"B", 1}}, Operation::CONTRACTION); 
-    network.AddEdge("k", {{"B", 2}, {"C", 0}}, Operation::CONTRACTION, 1);
-
-
-
-    Tensor A({2,2}); 
-    A[{0,0}] = 1;  A[{1,0}] = 2;
-    A[{0,1}] = -1; A[{1,1}] = -2;
-
-    Tensor B({2,2,3});
-    B[{0,0,0}] = 3;  B[{1,0,0}] = 4;
-    B[{0,1,0}] = -5; B[{1,1,0}] = 10;
-    B[{0,1,0}] = -5; B[{1,1,0}] = 10;
-
-    B[{0,0,1}] = 3;  B[{1,0,1}] = 4;
-    B[{0,1,1}] = -5; B[{1,1,1}] = 10;
-    B[{0,1,1}] = -5; B[{1,1,1}] = 10;
-
-    B[{0,0,2}] = 3;  B[{1,0,2}] = 4;
-    B[{0,1,2}] = -5; B[{1,1,2}] = 10;
-    B[{0,1,2}] = -5; B[{1,1,2}] = 10;
-
-    Tensor C({3});
-    C[0] = 1; C[1] = 5; C[2] = 3;
-
-    Tensor out = network.Evaluate({std::move(A), std::move(B), std::move(C)});
-
-    std::cout << "out order: " << out.Order() << "\n";
-    std::cout << "out tensor_size: " << out.TensorSize() << "\n";
-    std::cout << "out tensor_size.size(): " << out.TensorSize().size() << "\n";
-
-    std::cout << out.FlatString() << "\n";
-}
-
 /*
 {
-    // \todo check if my calculation agrees with this
     TensorNetworkDefinition network;
-    network.AddNode("A", 2);
-    network.AddNode("B", 3);
+    network.AddNode("A", 1);
+    network.AddNode("B", 2);
     network.AddNode("C", 1);
     network.AddEdge("i", {{"A", 0}, {"B", 0}}, Operation::CONVOLUTION, 0); 
-    network.AddEdge("j", {{"A", 1}, {"B", 1}}, Operation::CONTRACTION); 
-    network.AddEdge("k", {{"B", 2}, {"C", 0}}, Operation::CONTRACTION, 1);
+    network.AddEdge("j", {{"B", 1}, {"C", 0}}, Operation::CONTRACTION, 1);
 
-
-
-    Tensor A({2,2}); 
-    A[{0,0}] = 1;  A[{1,0}] = 2;
-    A[{0,1}] = -1; A[{1,1}] = -2;
-
-    Tensor B({2,2,3});
-    B[{0,0,0}] = 3;  B[{1,0,0}] = 4;
-    B[{0,1,0}] = -5; B[{1,1,0}] = 10;
-    B[{0,1,0}] = -5; B[{1,1,0}] = 10;
-
-    B[{0,0,1}] = 3;  B[{1,0,1}] = 4;
-    B[{0,1,1}] = -5; B[{1,1,1}] = 10;
-    B[{0,1,1}] = -5; B[{1,1,1}] = 10;
-
-    B[{0,0,2}] = 3;  B[{1,0,2}] = 4;
-    B[{0,1,2}] = -5; B[{1,1,2}] = 10;
-    B[{0,1,2}] = -5; B[{1,1,2}] = 10;
+    Tensor A({2}); 
+    A[0] = 1;  A[1] = 2;
+    
+    Tensor B({2,3});
+    B[{0,0}] = 3;  B[{0,1}] = 4;  B[{0,2}] = 6;
+    B[{1,0}] = -5; B[{1,1}] = 10; B[{1,2}] = 4;
 
     Tensor C({3});
     C[0] = 1; C[1] = 5; C[2] = 3;
@@ -652,6 +596,49 @@ int main() {
     std::cout << out.FlatString() << "\n";
 }
 */
+
+
+{
+    // \todo check if my calculation agrees with this
+    TensorNetworkDefinition network;
+    network.AddNode("A", 2);
+    network.AddNode("B", 3);
+    network.AddNode("C", 1);
+    network.AddEdge("i", {{"A", 0}, {"B", 0}}, Operation::CONVOLUTION, 0); 
+    network.AddEdge("j", {{"A", 1}, {"B", 1}}, Operation::CONTRACTION); 
+    network.AddEdge("k", {{"B", 2}, {"C", 0}}, Operation::CONTRACTION, 1);
+
+
+
+    Tensor A({2,2}); 
+    A[{0,0}] = 1;  A[{1,0}] = 2;
+    A[{0,1}] = -1; A[{1,1}] = -2;
+
+    Tensor B({2,2,3});
+    B[{0,0,0}] = 3;  B[{1,0,0}] = 4;
+    B[{0,1,0}] = -5; B[{1,1,0}] = 10;
+    B[{0,1,0}] = -5; B[{1,1,0}] = 10;
+
+    B[{0,0,1}] = 3;  B[{1,0,1}] = 4;
+    B[{0,1,1}] = -5; B[{1,1,1}] = 10;
+    B[{0,1,1}] = -5; B[{1,1,1}] = 10;
+
+    B[{0,0,2}] = 3;  B[{1,0,2}] = 4;
+    B[{0,1,2}] = -5; B[{1,1,2}] = 10;
+    B[{0,1,2}] = -5; B[{1,1,2}] = 10;
+
+    Tensor C({3});
+    C[0] = 1; C[1] = 5; C[2] = 3;
+
+    Tensor out = network.Evaluate({std::move(A), std::move(B), std::move(C)});
+
+    std::cout << "out order: " << out.Order() << "\n";
+    std::cout << "out tensor_size: " << out.TensorSize() << "\n";
+    std::cout << "out tensor_size.size(): " << out.TensorSize().size() << "\n";
+
+    std::cout << out.FlatString() << "\n";
+}
+
 
 /*
     // \todo check if I can update Tensor to include scalars, and if this will work
