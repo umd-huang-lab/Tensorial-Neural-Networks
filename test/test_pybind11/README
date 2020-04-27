@@ -1,0 +1,6 @@
+Build with "make"
+
+Check to make sure "python --version" returns python 3; I'm not sure if this is necessary.
+To test, run "python" with test_pybind11/lib as the current working directory. In the python
+interpreter call "import test_python_binding" and then 
+"test_python_binding.AddAll([1,2,3])"

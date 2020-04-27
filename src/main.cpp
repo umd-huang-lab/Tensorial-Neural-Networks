@@ -599,7 +599,6 @@ int main() {
 
 
 {
-    // \todo check if my calculation agrees with this
     TensorNetworkDefinition network;
     network.AddNode("A", 2);
     network.AddNode("B", 3);
