@@ -85,6 +85,9 @@ class Tensor {
         Tensor operator-(const Tensor& ot);
         Tensor& operator-=(const Tensor& ot);
 
+        float* Data();
+
+
         // Requires the resulting tensor to have the same number of components 
         void Resize(std::vector<size_t> tensor_size_in);
 

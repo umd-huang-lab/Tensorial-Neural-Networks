@@ -23,7 +23,7 @@ Tensor::Tensor(std::vector<size_t> tensor_size_in)
 
 
 Tensor::Tensor(const Tensor& t) {
-    std::cout << "copy constructor\n";
+    
     tensor_size = t.tensor_size;
     num_components = t.num_components;
     data = new float[t.num_components];  
@@ -34,7 +34,7 @@ Tensor::Tensor(const Tensor& t) {
 }
 
 Tensor& Tensor::operator=(const Tensor& t) {
-    std::cout << "copy assignment\n"; 
+    
     data = new float[t.num_components]; 
     for(size_t i = 0; i < t.num_components; i++) {
         data[i] = t.data[i]; 
@@ -67,10 +67,8 @@ Tensor::Tensor(Tensor&& t) {
     t.managed = false;
 }
 
-Tensor::~Tensor() {
-
-    std::cout << "deleting tensor with " << NumComponents() << " components and "
-              << " managed = " << managed << "\n";
+Tensor::~Tensor() { 
+   
     if(managed) {
         delete[] data;
     }
@@ -304,6 +302,11 @@ const float& Tensor::operator[](size_t flat_index) const {
    
     return data[flat_index];
 
+}
+
+
+float* Tensor::Data() {
+    return data;
 }
 
 
