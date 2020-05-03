@@ -15,13 +15,15 @@
 #include <string>
 #include <memory>
 
+struct DLManagedTensor; 
+
 namespace OPS {
 
 class TensorNetworkDefinition;
 struct CPDDecompOut;
 
 // 3rd party library forward declarations, so dependencies are only included by cpp files 
-class DLManagedTensor; 
+
 
 
 // Just assuming scalars are floats for now.... we can make this a template  
@@ -61,14 +63,15 @@ class Tensor {
 
         Tensor(DLManagedTensor* dlpack_tensor);
 
-        ~Tensor() = default;
+        ~Tensor();
 
         // \todo look into what Eigen does for copying
         // read https://stackoverflow.com/questions/9322174/move-assignment-operator-and-if-this-rhs
         Tensor(const Tensor& t);
         Tensor& operator=(const Tensor& t);
 
-        Tensor(Tensor&&) = default;
+        // I was using the default move constructor when data was a unique_ptr
+        Tensor(Tensor&&);
         
 
         float& operator[](const std::vector<size_t>& tensor_index);
@@ -147,6 +150,7 @@ class Tensor {
 
     private:	
 
+        DLManagedTensor* dlpack_tensor; 
 
         std::vector<size_t> tensor_size; 
         // \todo is it natural to change the sizes? If so I should have a constructor
@@ -157,7 +161,16 @@ class Tensor {
         size_t num_components;
 
         // \todo should look into what Eigen does for its memory management
-        std::unique_ptr<float[]> data; 
+
+        // I was using unique_ptr for data, with a default destructor for Tensor, 
+        // but then realized I need shared_ptr semantics
+        // to be interoperable with Pytorch and other libs, except std::shared_ptr in
+        // c++14 doesn't implement an array interface, or passing the data pointer
+        // as the first element of an array, which makes it painful to work with
+        float* data; 
+        bool managed = false;
+        // kind of hacky to put this here \todo find out what pytorch does
+        
 }; // Tensor
 
 bool SameTensorSize(const Tensor& x, const Tensor& y);

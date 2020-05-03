@@ -58,7 +58,7 @@ void Tensor::SetPseudoInverseTranspose(size_t slice_mode1, size_t slice_mode2,
     #endif
 
     Map<MatrixXf, EIGEN_DATA_LAYOUT, Stride<Dynamic,Dynamic>> 
-        m(data.get(), tensor_size[slice_mode1], tensor_size[slice_mode2], 
+        m(data, tensor_size[slice_mode1], tensor_size[slice_mode2], 
           Stride<Dynamic,Dynamic>(outer_stride, inner_stride)); 
 
 
@@ -109,7 +109,7 @@ Tensor Tensor::CalcPseudoInverse(size_t slice_mode1, size_t slice_mode2,
     #endif
 
     Map<MatrixXf, EIGEN_DATA_LAYOUT, Stride<Dynamic,Dynamic>> 
-        m(data.get(), tensor_size[slice_mode1], tensor_size[slice_mode2], 
+        m(data, tensor_size[slice_mode1], tensor_size[slice_mode2], 
           Stride<Dynamic,Dynamic>(outer_stride, inner_stride)); 
  
     Matrix<float, Dynamic, Dynamic, EIGEN_DATA_LAYOUT> pseudo_inverse 

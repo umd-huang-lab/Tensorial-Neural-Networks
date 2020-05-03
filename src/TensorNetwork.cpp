@@ -502,7 +502,7 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
         //std::cout << "out_ti: " << out_ti << " ; sum: " << sum << "\n\n\n";
         out[out_ti] = sum;
     }
-
+    std::cout << "returning from main evaluate\n";
     return out;
 }
 
@@ -515,7 +515,7 @@ Tensor TensorNetworkDefinition::Evaluate(const std::vector<Tensor>& tensors) {
     // runtime checks to determine the sizes are correct
     // \todo how to handle errors
     // \todo perhaps options to enable / disable runtime checks
-
+    std::cout << "entered function\n";
     if(NumNodes() != tensors.size()) {
         std::cerr << "Error Evaluate: NumNodes() != tensors.size()\n";
     }
@@ -548,7 +548,7 @@ Tensor TensorNetworkDefinition::Evaluate(const std::vector<Tensor>& tensors) {
    
    
     
-
+    std::cout << "calling main evaluate\n";
     // choose evaluation strategy
 
     if(HasOnlyContraction()) {

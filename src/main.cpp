@@ -628,9 +628,14 @@ int main() {
 
     Tensor C({3});
     C[0] = 1; C[1] = 5; C[2] = 3;
-
+    
+    std::cout << "About to evaluate\n";
+    // \todo a copy is happening when I pass the tensors to the vector, but I want to avoid this.
+    //       Maybe there's a way to pass a vector of const references
+    //       See reference_wrapper, could also simply pass a vector of pointers
+    //       Or accept vectors of std::unique_ptr<Tensor>
     Tensor out = network.Evaluate({std::move(A), std::move(B), std::move(C)});
-
+    
     std::cout << "out order: " << out.Order() << "\n";
     std::cout << "out tensor_size: " << out.TensorSize() << "\n";
     std::cout << "out tensor_size.size(): " << out.TensorSize().size() << "\n";

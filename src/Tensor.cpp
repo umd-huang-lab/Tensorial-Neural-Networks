@@ -16,28 +16,30 @@ namespace OPS {
 Tensor::Tensor(std::vector<size_t> tensor_size_in) 
     : tensor_size(std::move(tensor_size_in)), 
       num_components(tensor_size.size() == 0 ? 0 : MultiplyElements(tensor_size)),
-      data(std::make_unique<float[]>(NumComponents())) 
-{
-    
-}
+      data(new float[NumComponents()]),
+      managed(true) 
+{}
 
 
 
 Tensor::Tensor(const Tensor& t) {
+    std::cout << "copy constructor\n";
     tensor_size = t.tensor_size;
     num_components = t.num_components;
-    data = std::make_unique<float[]>(t.num_components);  
+    data = new float[t.num_components];  
     for(size_t i = 0; i < t.num_components; i++) {
         data[i] = t.data[i]; 
     }
+    managed = true;
 }
 
 Tensor& Tensor::operator=(const Tensor& t) {
-    
-    data = std::make_unique<float[]>(t.num_components); 
+    std::cout << "copy assignment\n"; 
+    data = new float[t.num_components]; 
     for(size_t i = 0; i < t.num_components; i++) {
         data[i] = t.data[i]; 
     }
+    managed = true;
 
     num_components = t.num_components;
     tensor_size = t.tensor_size;
@@ -52,6 +54,29 @@ Tensor& Tensor::operator=(Tensor&& t) {
     return *this;
 }
 */
+
+
+Tensor::Tensor(Tensor&& t) {
+    tensor_size = std::move(t.tensor_size); 
+    num_components = t.num_components;
+
+    data = t.data;
+    managed = true;
+
+    t.data = nullptr;
+    t.managed = false;
+}
+
+Tensor::~Tensor() {
+
+    std::cout << "deleting tensor with " << NumComponents() << " components and "
+              << " managed = " << managed << "\n";
+    if(managed) {
+        delete[] data;
+    }
+    // otherwise the platform that we borrowed the memory from is responsible for
+    // deleting
+}
 
 
 
@@ -406,7 +431,7 @@ Tensor Contract(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y) 
     }
 
     Tensor contraction(contraction_size);  
-    float* c_data = contraction.data.get();
+    float* c_data = contraction.data;
     size_t c_data_size =  contraction.NumComponents();
     size_t mode_size = x.tensor_size[mode_k]; // == y.tensor_size[mode_l]
 
@@ -471,7 +496,7 @@ Tensor MultiplyMatrix(size_t mode_k, const Tensor& t, const Tensor& m) {
     out_size[mode_k] = m.tensor_size[1];
 
     Tensor out(out_size);
-    float* o_data = out.data.get();
+    float* o_data = out.data;
     size_t o_data_size = out.NumComponents();
     size_t mode_size = t.tensor_size[mode_k];
 
@@ -534,7 +559,7 @@ Tensor Convolve(size_t mode_k, size_t mode_l, const Tensor& x, const Tensor& y) 
                            convolution_size.begin()+mode_k+1, convolution_size.end());
 
     Tensor convolution(convolution_size);  
-    float* c_data = convolution.data.get();
+    float* c_data = convolution.data;
     size_t c_slice_data_size = convolution.NumComponents()/conv_vector_length;
 
     size_t x_offset = ModeStride(mode_k, x.tensor_size);
