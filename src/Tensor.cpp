@@ -320,6 +320,8 @@ void Tensor::SwapAxes(size_t mode_k, size_t mode_l) {
     #endif // DEBUG
 
     // there's probably a better algorithm
+    // \todo this is broken if I plan to use this class for operating on borrowed data
+    //       from a pytorch tensor
     Tensor swapped = SwappedAxes(mode_k, mode_l);
     *this = swapped;
 }

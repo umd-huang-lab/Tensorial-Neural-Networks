@@ -20,6 +20,9 @@ namespace OPS {
 class TensorNetworkDefinition;
 struct CPDDecompOut;
 
+// 3rd party library forward declarations, so dependencies are only included by cpp files 
+class DLManagedTensor; 
+
 
 // Just assuming scalars are floats for now.... we can make this a template  
 // \todo read this
@@ -55,6 +58,9 @@ class Tensor {
          * tensor_size.size() is the order of the tensor
          */
         explicit Tensor(std::vector<size_t> tensor_size);
+
+        Tensor(DLManagedTensor* dlpack_tensor);
+
         ~Tensor() = default;
 
         // \todo look into what Eigen does for copying

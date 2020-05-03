@@ -13,9 +13,7 @@ third :=
 
 incs := `python -m pybind11 --includes`
 
-LDFLAGS := -fPIC -shared -Wl,-install_name,$(so_name) -Wl,-undefined,dynamic_lookup 
-
-
+LDFLAGS := -fPIC -shared -Wl,-install_name,$(so_name) -Wl,-undefined,dynamic_lookup
 LDLIBS :=
 
 CPPFLAGS := 

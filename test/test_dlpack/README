@@ -1,0 +1,11 @@
+With lib as the current working directory, start the python interpreter.
+
+Then call:
+
+import test_dlpack
+import torch
+import torch.utils.dlpack
+torch_A = torch.tensor([[192,3,3], [21,52,90]], dtype=torch.float32)
+dlm_torch_A = torch.utils.dlpack.to_dlpack(torch_A)
+test_dlpack.dlmtensor_coord
+test_dlpack.dlmtensor_coord(dlm_torch_A, 0)
