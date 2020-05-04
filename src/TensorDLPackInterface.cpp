@@ -1,3 +1,7 @@
+#include <vector>
+#include <string>
+
+
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 namespace py = pybind11;
@@ -44,7 +48,7 @@ void SpecificExampleTNN(std::vector<py::object> pyobject_dlmtensors) {
         tnn_tensors[i] = TNNFromDLPack(pyobject_dlmtensors[i]);
     }
 
-    // \todo this is bad but I'm hurrying to get this proof of concept ready
+    // \todo this is bad (and a trivial fix) but I'm hurrying to get this proof of concept ready
     //       certainly don't want copies, will have to change the signature
     //       of Evalaute, or add one accepting std::vector<unique_ptr<Tensor>>
     std::vector<Tensor> copies(tnn_tensors.size());
@@ -74,6 +78,72 @@ void SpecificExampleTNN(std::vector<py::object> pyobject_dlmtensors) {
 }
 
 
+void ConvEinsum(std::vector<std::string> input_subscripts, 
+                std::string output_subscript,
+                std::string convolution_subscript, 
+                std::string subscripts_set,
+                std::vector<py::object> pyobject_dlmtensors)
+{
+
+    std::vector<std::unique_ptr<Tensor>> tnn_tensors(pyobject_dlmtensors.size());
+
+    for(size_t i = 0; i < tnn_tensors.size(); i++) {
+        tnn_tensors[i] = TNNFromDLPack(pyobject_dlmtensors[i]);
+    }
+
+
+    // \todo this is bad (and a trivial fix) but I'm hurrying to get this proof of concept ready
+    //       certainly don't want copies, will have to change the signature
+    //       of Evalaute, or add one accepting std::vector<unique_ptr<Tensor>>
+    std::vector<Tensor> copies(tnn_tensors.size());
+    for(size_t i = 0; i < copies.size(); i++) {
+        copies[i] = *tnn_tensors[i];
+    }
+
+    TensorNetworkDefinition network;
+    for(size_t i = 0; i < input_subscripts.size(); i++) {
+        // just name the nodes after their index
+        network.AddNode(std::to_string(i), input_subscripts[i].size());
+    }
+
+    // \todo can possibly organize things differently and avoid much of this
+    for(size_t s = 0; s < subscripts_set.size(); s++) {
+        char edge = subscripts_set[s];
+        std::vector<TensorNetworkDefinition::NodeMode> edge_parts;
+        int output_mode = -1;
+        Operation op = Operation::CONTRACTION;
+
+        for(size_t node_index = 0; node_index < input_subscripts.size(); node_index++) {
+            for(size_t j = 0; j < input_subscripts[node_index].size(); j++) {
+             
+                if(edge == input_subscripts[node_index][j]) {
+                    edge_parts.push_back({std::to_string(node_index), j});
+                }
+    
+            }
+        }
+
+        for(size_t i = 0; i < output_subscript.size(); i++) {
+            if(edge == output_subscript[i]) {
+                output_mode = int(i);
+                break;
+            }
+        }
+
+        for(size_t i = 0; i < convolution_subscript.size(); i++) {
+            if(edge == convolution_subscript[i]) {
+                op = Operation::CONVOLUTION; 
+                break;
+            }
+        }
+
+        network.AddEdge(std::string(1, edge), std::move(edge_parts), op, output_mode);
+    }
+ 
+    Tensor out = network.Evaluate(std::move(copies));
+    std::cout << "out.FlatString(): " << out.FlatString() << "\n";
+}
+
 // \todo have to implement everything considered by dlpack_tensor
 Tensor::Tensor(DLManagedTensor* dlpack_tensor_in)
     : dlpack_tensor(dlpack_tensor_in),
@@ -91,12 +161,16 @@ Tensor::Tensor(DLManagedTensor* dlpack_tensor_in)
 
 
 
-PYBIND11_MODULE(tnn, m) {
+PYBIND11_MODULE(tnnlib, m) {
     m.doc() = "tnn plugin"; // optional module docstring
  
     m.def("dlmtensor_coord", &DLManagedTensorCoordinate, "Returns the coordinate of a DLManagedTensor at the given index");
 
     m.def("specific_example", &SpecificExampleTNN, "Computes a specifc example of a network");
+
+    
+    m.def("conv_einsum", &ConvEinsum, "Computes a convolutional tensor network "
+                                       "which is represented as a convolutional eisum");
 
 
 }

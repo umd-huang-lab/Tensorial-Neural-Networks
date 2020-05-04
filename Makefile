@@ -3,7 +3,7 @@ objdir := obj
 bindir := bin
 target_bin := OPS
 libdir := lib
-target_lib := tnn
+target_lib := tnnlib
 so_name := $(target_lib)`python-config --extension-suffix`
 
 headers := $(wildcard $(srcdir)/*.h)
