@@ -1,0 +1,3 @@
+We may want to check our third party libraries into source control to make it easy to work on our project from
+a variety of machines. This page discusses this, and also suggests putting the third party libraries into
+an separate repository: https://stackoverflow.com/questions/6833320/dealing-with-the-huge-number-of-boost-header-files
