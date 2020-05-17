@@ -37,7 +37,7 @@ dLdU0 = torch.rand(X, Y, R)
 dLdU1 = torch.rand(H, W, R)
 
 # from paper
-def CPBackwardPass(K1, K2, U1, dLdV):
+def CPBackwardPass(K1, K2, U, U1, dLdV):
 	dLdU1 = tnn.conv_einsum("hwt, tr -> hwr", dLdV, K2.permute(1, 0)) 
 	dLdU0 = tnn.conv_einsum("hwr, hwr -> hwr | hw", dLdU1, K1)
 
