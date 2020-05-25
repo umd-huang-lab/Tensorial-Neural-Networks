@@ -78,6 +78,7 @@ class Tensor {
         const float& operator[](const std::vector<size_t>& tensor_index) const;
         float& operator[](size_t flat_index);
         const float& operator[](size_t flat_index) const;
+ 
 
         Tensor operator+(const Tensor& ot);
         Tensor& operator+=(const Tensor& ot);
@@ -249,6 +250,7 @@ std::vector<size_t> RowMajorTensorIndex(size_t flat_index,
 size_t RowMajorModeStride(size_t mode, const std::vector<size_t>& tensor_size);
 
 
+                        
 
 
 #define DATA_LAYOUT COL_MAJOR

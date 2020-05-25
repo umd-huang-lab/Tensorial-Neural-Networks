@@ -13,7 +13,7 @@ OPS::Prof ops_prof; // global profiling object
 int main() {
     using namespace OPS;
 
-    /* 
+    /*
     std::vector<size_t> tensor_index = {1, 0};
     std::vector<size_t> tensor_size = {2, 2}; 
     size_t flat_index = FlatIndex(tensor_index, tensor_size);
@@ -471,10 +471,16 @@ int main() {
 
     }
 */
-/*
+
+    {
+
+    }
+
+
     {
 
     TensorNetworkDefinition network;
+    network.SetConvolutionType(ConvolutionType::CYCLIC);
     network.AddNode("A", 1);
     network.AddNode("B", 2);
     network.AddEdge("i", {{"A", 0}, {"B", 0}}, Operation::CONVOLUTION, 0); 
@@ -495,7 +501,8 @@ int main() {
 
 
     }
-*/
+
+    
 /*
 {
 
@@ -596,7 +603,7 @@ int main() {
     std::cout << out.FlatString() << "\n";
 }
 */
-
+/*
 
 {
     TensorNetworkDefinition network;
@@ -642,6 +649,7 @@ int main() {
 
     std::cout << out.FlatString() << "\n";
 }
+*/
 
 
 /*

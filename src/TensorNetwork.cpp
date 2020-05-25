@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <utility>
 
+
 #include "TensorNetwork.h"
 #include "Tensor.h"
 #include "HelpersTypedefs.h"
@@ -14,6 +15,10 @@ TensorNetworkDefinition::TensorNetworkDefinition(std::string einsum_definition,
                                                  std::map<Operation, std::string> operations) 
 {
 
+}
+
+void TensorNetworkDefinition::SetConvolutionType(ConvolutionType type) {
+    convolution_type = type; 
 }
 
 
@@ -212,7 +217,9 @@ Tensor TensorNetworkDefinition::EvaluateEinsumNaive(const std::vector<Tensor>& t
 
 
 
-Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor>& tensors) {
+
+
+Tensor TensorNetworkDefinition::EvaluateConvNaive(const std::vector<Tensor>& tensors) {
  
 
     // assume type information has all been checked and the inputs are valid
@@ -220,7 +227,7 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
     // \todo rename "operation" to something evoking the summation_indices in the forall sum
     // \todo could try to precompute some of this setup, (the parts not using tensors directly)
     //       it depends on how the user wants to call this.
-    // \todo there's some code duplication, could thing about factoring things out, or better,
+    // \todo there's some code duplication, could think about factoring things out, or better,
     //       reorganizing the code paths so eliminate separate paths doing the same thing 
     std::vector<size_t> out_tensor_size = CalcOutputTensorSize(tensors);   
     Tensor out(std::move(out_tensor_size));
@@ -305,7 +312,7 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
     }
 
 
-    {  
+    {
         for(size_t l = 0; l < output_modes.size(); l++) {
             OutputMode om = output_modes[l];
             if(om.is_edge) {
@@ -378,7 +385,13 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
     // Initialize kth_tensor_modes_info 
     ////////////////////////////////////////////////
    
+
+
+
+    //// what follows is the main computation, the above is in preparation for this
     // run the loop at least once to handle when the output tensor is a scalar
+    // \todo it would be preferable to separate out the different convolution types
+
     for(size_t i = 0, outNumComponents = out.NumComponents();
         i < outNumComponents || i == 0; i++) 
     {
@@ -408,9 +421,10 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
         for(size_t k = 0; k < tensors.size(); k++) {
             // k_ti is a tensor index for the kth tensor
             std::vector<size_t> k_ti(tensors.at(k).Order(), 0);
+            bool index_is_out_of_range = false;
             std::vector<ModeInfo>& modes_info = kth_tensor_modes_info[k];
 
-            for(size_t l = 0; l < k_ti.size(); l++) {
+            for(size_t l = 0; l < k_ti.size() && !index_is_out_of_range; l++) {
                 // calculate the index at the lth mode of the kth tensor
                 // \todo is it possible to remove these conditional branches from
                 //       this innermost loop?
@@ -426,9 +440,12 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
                         Operation single_op;
                         if(output_mode_edge.HasSingleOperation(&single_op)) {
                             if(single_op == Operation::CONVOLUTION) {
+                                // \todo it's unfortunate that this duplicates code b/w
+                                // the cases that the index is an output, and when it is not
                                 // of the form i - i1 - i2 - i3
-                                size_t mode_size = output_mode_edge.GetModeSize(tensors);
-                                size_t out_ind = out_ti[output_mode_info.output_mode];
+                                
+                                 size_t mode_size = output_mode_edge.GetModeSize(tensors, l);
+                                 size_t out_ind = out_ti[output_mode_info.output_mode];
 
                                 std::pair<size_t, size_t> 
                                 interval = conv_parts_intervals[edge_ind]; 
@@ -437,8 +454,23 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
                                 for(size_t cis = interval.first; cis < interval.second; cis++) {
                                     conv_ind_sum += conv_parts_ti[cis];
                                 }
-                                
+                                                            
+                                switch(convolution_type) {
+                                case ConvolutionType::CYCLIC: {
+
                                 k_ti[l] = PModi(out_ind - conv_ind_sum, mode_size);
+                                } break;
+                                case ConvolutionType::SAME: {
+ 
+                                size_t conv_offset_ind= output_mode_edge.GetSAMEOffset(tensors); 
+                                k_ti[l] = out_ind + (conv_offset_ind-1)/2 - conv_ind_sum;
+
+                                if(out_ind < conv_ind_sum || k_ti[l] > mode_size) {
+                                    index_is_out_of_range = true; 
+                                }
+
+                                } break;
+                                }
                             } else { // Operation::CONTRACTION
                                 // of the form i
                                 k_ti[l] = out_ti[output_mode_info.output_mode];
@@ -452,7 +484,7 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
                     }
                 } break; 
                 case ModeType::OPERATION: {
-                    
+                                    
                     size_t op_ti_index = mode_info.index;
                     size_t edge_ind = op_ind2edge_ind_map[op_ti_index];
                     Edge& edge = edges[edge_ind]; 
@@ -460,7 +492,7 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
                     if(edge.HasSingleOperation(&single_op)) {
                         if(single_op == Operation::CONVOLUTION) { 
                             // of the form i - i1 - i2 - i3
-                            size_t mode_size = edge.GetModeSize(tensors);
+                            size_t mode_size = edge.GetModeSize(tensors, l);
                             size_t ind = op_ti[op_ti_index];
 
                             std::pair<size_t, size_t> 
@@ -472,10 +504,23 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
                             for(size_t cis = interval.first; cis < interval.second; cis++) {
                                 conv_ind_sum += conv_parts_ti[cis];
                             }
-                            k_ti[l] = PModi(ind - conv_ind_sum, mode_size);
-                        } else { // Operation::CONTRACTION
-                        
-                           
+
+                            switch(convolution_type) {
+                            case ConvolutionType::CYCLIC: {
+                                k_ti[l] = PModi(ind - conv_ind_sum, mode_size);
+                            } break;
+                            case ConvolutionType::SAME: { 
+                               
+                                size_t conv_offset_ind = edge.GetSAMEOffset(tensors); 
+                                k_ti[l] = ind + (conv_offset_ind-1)/2 - conv_ind_sum;
+                                if(ind < conv_ind_sum || k_ti[l] > mode_size) {
+                                    index_is_out_of_range = true; 
+                                }
+                            }
+                            
+                            }
+                            
+                        } else { // Operation::CONTRACTION 
                             k_ti[l] = op_ti[op_ti_index];
                         }
                     } else {
@@ -491,23 +536,24 @@ Tensor TensorNetworkDefinition::EvaluateCyclicConvNaive(const std::vector<Tensor
                 }
 
             }
-        
-            prod *= tensors.at(k)[k_ti]; 
-            //std::cout << "k_ti: " << k_ti << " ; prod: " << prod << "\n"; 
+            std::cout << "index_is_out_of_range: " << index_is_out_of_range
+                      << " k_ti: " << k_ti << "\n";
+            if(index_is_out_of_range) { 
+                prod *= 0;
+                break;
+            } else {
+                prod *= tensors.at(k)[k_ti];  
+            }
         }
-        //std::cout << "sum += prod: prod = " << prod << "\n\n";
         sum += prod;
-
     } // j1
     } // j
-        //std::cout << "out_ti: " << out_ti << " ; sum: " << sum << "\n\n\n";
+        
         out[out_ti] = sum;
     }
     
     return out;
 }
-
-
 
 
 
@@ -535,8 +581,11 @@ Tensor TensorNetworkDefinition::Evaluate(const std::vector<Tensor>& tensors) {
 
         for(size_t j = 1; j < edges[i].edge_parts.size() && modes_match; j++) {
             edge_part = edges[i].edge_parts[j]; 
-            modes_match &= 
-                (mode_size == tensors[edge_part.node_index].tensor_size[edge_part.mode]);
+            if(edge_part.operation == Operation::CONTRACTION) {
+                // convolution modes can be different sizes
+                modes_match &= 
+                   (mode_size == tensors[edge_part.node_index].tensor_size[edge_part.mode]);
+            }
         }
 
         if(!modes_match) {
@@ -553,7 +602,7 @@ Tensor TensorNetworkDefinition::Evaluate(const std::vector<Tensor>& tensors) {
     if(HasOnlyContraction()) {
         //return EvaluateEinsumNaive(tensors);
     } else if(HasNoMultiOperationEdges()) { 
-        return EvaluateCyclicConvNaive(tensors);
+        return EvaluateConvNaive(tensors);
     } else {
         // \todo
         
@@ -601,10 +650,56 @@ size_t TensorNetworkDefinition::Edge::NumConvolutionParts() {
     return num_convolution_parts;
 }
 
-size_t TensorNetworkDefinition::Edge::GetModeSize(const std::vector<Tensor>& tensors) {
-    return tensors[edge_parts[0].node_index].tensor_size[edge_parts[0].mode];   
+size_t TensorNetworkDefinition::Edge::GetModeSize(const std::vector<Tensor>& tensors,
+                                                  size_t edge_part) 
+{
+    return tensors[edge_parts[edge_part].node_index].tensor_size[edge_parts[edge_part].mode];
 }
 
+void TensorNetworkDefinition::Edge::GetMinMaxModeSizes(const std::vector<Tensor>& tensors,
+                                                       size_t& min, size_t& max) 
+{
+    static size_t temp_min = tensors[edge_parts[0].node_index].tensor_size[edge_parts[0].mode];
+    static size_t temp_max = temp_min;
+
+    for(size_t i = 1; i < tensors.size(); i++) {
+        size_t mode_size = tensors[edge_parts[i].node_index].tensor_size[edge_parts[i].mode];
+
+        if(mode_size < temp_min) {
+            temp_min = mode_size;
+        } else if(mode_size > temp_max) {
+            temp_max = mode_size;
+        }
+    } 
+
+    min = temp_min;
+    max = temp_max; 
+}
+
+size_t TensorNetworkDefinition::Edge::GetSAMEOffset(const std::vector<Tensor>& tensors) {
+    // could improve this method by removing the call to GetMinMaxModeSizes
+    size_t min_mode_size;
+    size_t max_mode_size; 
+    this->GetMinMaxModeSizes(tensors, min_mode_size, max_mode_size);
+
+    /**
+     * We do this complicated sum because we want to support multiway convolution. This sum
+     * computes the padding that results from binary SAME convolutions computed left to right,
+     * as in (((A * B) * C) * D) * E ...
+     * Each binary SAME chooses the padding to be (N-1)/2, where N is 
+     * the lesser of the two mode sizes. This padding indexes an element of the full 
+     * convolution. For GetSAMEOffset we effectively index an element of the full convolution
+     * resulting from all of the binary convolutions.
+     */
+    size_t conv_offset_ind = 0;
+    for(size_t m = 0; m < tensors.size(); m++) {
+        conv_offset_ind 
+        += (tensors[edge_parts[m].node_index].tensor_size[edge_parts[m].mode]-1)/2;
+    }
+    conv_offset_ind -= (max_mode_size-1)/2;
+
+    return conv_offset_ind;
+}
 
 
 } // OPS

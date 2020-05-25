@@ -34,8 +34,23 @@ enum class Operation {
 };
 
 enum class ConvolutionType {
-    LINEAR,
-    CYCLIC
+    
+   
+    // agrees with numpy's convolution same option
+    // takes the middle M values of the full convolution, with possibly 1 extra on the left,
+    // where M is the maximum length of the vectors.
+    // The full convolution is obtained by taking as entries the coefficients of the polynomial
+    // product of the two vectors
+    // so the full convolution is defined F_i = sum_{i1} A_{i1}B_{i-i1}, and the same
+    // convolution is defined S_i = F_{i + (N-1)/2}, where N is the minimum length of the
+    // two vectors, and i ranges over M
+    SAME,  
+
+    // \todo
+    // CYCLIC should be considered broken because I have not seen a standard
+    // convention for treating the cyclic convolution of differently sized vectors, which
+    // is both commutative and at least effectively associative (aside from the boundary)
+    CYCLIC 
 };
  
 
@@ -104,7 +119,7 @@ class TensorNetworkDefinition {
     bool HasNoMultiOperationEdges();
 
     private:
-    ConvolutionType convolution_type = ConvolutionType::CYCLIC;
+    ConvolutionType convolution_type = ConvolutionType::SAME;
 
     std::vector<size_t> nodes; // nodes<order of node> 
 
@@ -140,7 +155,14 @@ class TensorNetworkDefinition {
         // probably want to store this instead of computing it in an inner loop
         size_t NumConvolutionParts();
         
-        size_t GetModeSize(const std::vector<Tensor>& tensors);
+        size_t GetModeSize(const std::vector<Tensor>& tensors, size_t edge_part = 0);
+        void GetMinMaxModeSizes(const std::vector<Tensor>& tensors, size_t& min, size_t& max);
+
+        /**
+         * Calculates the offset which indexes the first of the the middle components 
+         * from the full convolution. See Numpy's "same" option for convolution.
+         */
+        size_t GetSAMEOffset(const std::vector<Tensor>& tensors);
 
     };  
 
@@ -193,7 +215,7 @@ class TensorNetworkDefinition {
     // this one is for networks which include convolution, I'm separating them because
     // I assume the naive evaluation method may be different if convolution is involved,
     // but I may later remove the einsum only naive function if it's a pure subset of this
-    Tensor EvaluateCyclicConvNaive(const std::vector<Tensor>& tensors);
+    Tensor EvaluateConvNaive(const std::vector<Tensor>& tensors);
  
 };
 

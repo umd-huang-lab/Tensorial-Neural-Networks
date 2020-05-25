@@ -305,6 +305,8 @@ const float& Tensor::operator[](size_t flat_index) const {
 }
 
 
+
+
 float* Tensor::Data() {
     return data;
 }
