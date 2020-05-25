@@ -457,15 +457,14 @@ Tensor TensorNetworkDefinition::EvaluateConvNaive(const std::vector<Tensor>& ten
                                                             
                                 switch(convolution_type) {
                                 case ConvolutionType::CYCLIC: {
-
-                                k_ti[l] = PModi(out_ind - conv_ind_sum, mode_size);
+                                    k_ti[l] = PModi(out_ind - conv_ind_sum, mode_size);
                                 } break;
                                 case ConvolutionType::SAME: {
  
                                 size_t conv_offset_ind= output_mode_edge.GetSAMEOffset(tensors); 
-                                k_ti[l] = out_ind + (conv_offset_ind-1)/2 - conv_ind_sum;
+                                k_ti[l] = out_ind + conv_offset_ind - conv_ind_sum;
 
-                                if(out_ind < conv_ind_sum || k_ti[l] > mode_size) {
+                                if(out_ind < conv_ind_sum || k_ti[l] >= mode_size) {
                                     index_is_out_of_range = true; 
                                 }
 
@@ -508,15 +507,16 @@ Tensor TensorNetworkDefinition::EvaluateConvNaive(const std::vector<Tensor>& ten
                             switch(convolution_type) {
                             case ConvolutionType::CYCLIC: {
                                 k_ti[l] = PModi(ind - conv_ind_sum, mode_size);
+                                
                             } break;
                             case ConvolutionType::SAME: { 
                                
                                 size_t conv_offset_ind = edge.GetSAMEOffset(tensors); 
-                                k_ti[l] = ind + (conv_offset_ind-1)/2 - conv_ind_sum;
-                                if(ind < conv_ind_sum || k_ti[l] > mode_size) {
+                                k_ti[l] = ind + conv_offset_ind - conv_ind_sum;
+                                if(ind < conv_ind_sum || k_ti[l] >= mode_size) {
                                     index_is_out_of_range = true; 
                                 }
-                            }
+                            } break;
                             
                             }
                             
@@ -536,13 +536,13 @@ Tensor TensorNetworkDefinition::EvaluateConvNaive(const std::vector<Tensor>& ten
                 }
 
             }
-            std::cout << "index_is_out_of_range: " << index_is_out_of_range
-                      << " k_ti: " << k_ti << "\n";
+          
             if(index_is_out_of_range) { 
                 prod *= 0;
                 break;
             } else {
                 prod *= tensors.at(k)[k_ti];  
+                
             }
         }
         sum += prod;

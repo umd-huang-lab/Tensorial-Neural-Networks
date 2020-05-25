@@ -472,18 +472,43 @@ int main() {
     }
 */
 
+
+
+/*
     {
 
-    }
+    TensorNetworkDefinition network;
+    network.SetConvolutionType(ConvolutionType::SAME);
+    network.AddNode("A", 1);
+    network.AddNode("B", 2);
+    network.AddEdge("i", {{"A", 0}, {"B", 0}}, Operation::CONVOLUTION, 0);  
+    network.AddEdge("j", {{"B", 1}}, Operation::CONTRACTION); 
 
+    Tensor A({2}); 
+    A[0] = 1; A[1] = 2;
+
+    Tensor B({2,1});
+    B[{0,0}] = 3; B[{1,0}] = 4;
+
+    Tensor out = network.Evaluate({std::move(A), std::move(B)});
+
+    std::cout << "out order: " << out.Order() << "\n";
+    std::cout << "out tensor_size: " << out.TensorSize() << "\n";
+    std::cout << "out tensor_size.size(): " << out.TensorSize().size() << "\n";
+
+    std::cout << out.FlatString() << "\n";
+    }
+*/
 
     {
 
     TensorNetworkDefinition network;
-    network.SetConvolutionType(ConvolutionType::CYCLIC);
+    network.SetConvolutionType(ConvolutionType::SAME);
     network.AddNode("A", 1);
     network.AddNode("B", 2);
-    network.AddEdge("i", {{"A", 0}, {"B", 0}}, Operation::CONVOLUTION, 0); 
+    network.AddEdge("i", {{"A", 0}, {"B", 0}}, Operation::CONVOLUTION, 0);  
+    network.AddEdge("j", {{"B", 1}}, Operation::CONTRACTION); 
+
     Tensor A({2}); 
     A[0] = 1; A[1] = 2;
 
@@ -501,6 +526,7 @@ int main() {
 
 
     }
+
 
     
 /*
@@ -603,10 +629,11 @@ int main() {
     std::cout << out.FlatString() << "\n";
 }
 */
-/*
 
+/*
 {
     TensorNetworkDefinition network;
+    network.SetConvolutionType(ConvolutionType::SAME);
     network.AddNode("A", 2);
     network.AddNode("B", 3);
     network.AddNode("C", 1);
@@ -650,6 +677,7 @@ int main() {
     std::cout << out.FlatString() << "\n";
 }
 */
+
 
 
 /*
@@ -699,6 +727,7 @@ int main() {
 
 /*
     TensorNetworkDefinition network;
+    network.SetConvolutionType(ConvolutionType::CYCLIC);
     network.AddNode("A", 2);
     // \todo should I change the overloads so that if you have an output edge you don't have to 
     //       specify Operation::CONTRACTION?
@@ -718,6 +747,8 @@ int main() {
 
     std::cout << out.FlatString() << "\n";
 */
+
+
     return 0;
 }
 
