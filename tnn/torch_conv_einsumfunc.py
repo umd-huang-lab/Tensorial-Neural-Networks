@@ -132,21 +132,21 @@ def independent_convolve_same(mat1, mat2):
     
 
 
-A = [ [1., 2.], [3., 4.]]
-B = [ [2., -3.], [14., 24.]]
-
-torch_A = torch.tensor(A)
-torch_B = torch.tensor(B)
-
-print(torch_A)
-print(torch_B)
-print("Torch: " + str(independent_convolve_same(torch_A, torch_B)))
-
-print("single1: " + str(torch_A[1, :]))
-print("single2: " + str(torch_B[1, :]))
-print("single: " + str(convolve_same(torch_A[1, :], torch_B[1, :])))
-import numpy as np
-print("numpy: " + str(np.convolve(list(torch_A[1, :]), list(torch_B[1, :]), mode='same')))
+#A = [ [1., 2.], [3., 4.]]
+#B = [ [2., -3.], [14., 24.]]
+#
+#torch_A = torch.tensor(A)
+#torch_B = torch.tensor(B)
+#
+#print(torch_A)
+#print(torch_B)
+#print("Torch: " + str(independent_convolve_same(torch_A, torch_B)))
+#
+#print("single1: " + str(torch_A[1, :]))
+#print("single2: " + str(torch_B[1, :]))
+#print("single: " + str(convolve_same(torch_A[1, :], torch_B[1, :])))
+#import numpy as np
+#print("numpy: " + str(np.convolve(list(torch_A[1, :]), list(torch_B[1, :]), mode='same')))
 
 
 
@@ -158,7 +158,7 @@ def convolve2d_same(mat1, mat2):
     input_size = mat2.size() 
  
     max_h = max(kernel_size[0], input_size[0])
-    max_w = max(kernel_size[1], input_size[1])
+    max_w = max(kernel_size[1], input_size[1]) 
  
     in_channels = num_convolutions
     out_channels = num_convolutions
@@ -166,9 +166,7 @@ def convolve2d_same(mat1, mat2):
 
    
     padding = padding_2d(kernel_size, input_size)
-   
-  
-  
+    
     m = torch.nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=1, padding=padding, groups=groups, bias=False)
     mat1_flipped = torch.flip(mat1, [0,1])
 
@@ -176,10 +174,10 @@ def convolve2d_same(mat1, mat2):
 
     output = m(mat2.view(1, in_channels, input_size[0], input_size[1]))
 
-      # output.data is a 1 x 1 x width x height tensor
+    # output.data is a 1 x 1 x width x height tensor
     # and we slice it to the proper dimensions, because Conv2d returns too many
     # rows and columns with the best possible padding
-    return torch.squeeze(output.data[:,:,:max_h,:max_w], 0) 
+    return torch.squeeze(torch.squeeze(output.data[:,:,:max_h,:max_w], 0),0) 
     
 
     
@@ -239,41 +237,55 @@ def convolve2d_same(mat1, mat2):
 
 
 
+
 def independent_convolve2d_same(in1, in2):
-    # in1 and in2 are order 3 tensors. This function returns an order 3 tensor T such that
-    # T[i,:,:] is the 2d convolution of in1[i,:,:] with in2[i,:,:], for each i.
-    #
-    # the point of this function is to try to compute many convolution  using one call to Conv2d
+    
+    num_convolutions = in1.size(0)
+    if(num_convolutions != in2.size(0)):        
+        print("Error: the inputs must have the same length in the 0th mode")
 
-    num_convolutions = in1.size(0) 
-    if(num_convolutions != in2.size(0)):
-        print("Error: The inputs must have the same number of rows")
-
-    sz1 = in1.size()[1:3]
-    sz2 = in2.size(1)[1:3]
+    kernel_size = in1.size()[1:3]
+    input_size = in2.size()[1:3]
  
-    if(l1 > l2):
-        return convolve_same(in2, in1)
+    max_h = max(kernel_size[0], input_size[0])
+    max_w = max(kernel_size[1], input_size[1])
+    
  
-    kernel_size = l1
     in_channels = num_convolutions
     out_channels = num_convolutions
-    groups = num_convolutions 
+    groups = num_convolutions
 
+   
+    padding = padding_2d(kernel_size, input_size)
     
-    padding = padding_1d(l1)  
-  
-  
-    m = torch.nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=1, padding=padding, groups=groups, bias=False)
-    in1_flipped = torch.flip(in1, [1])
-    m.weight.data = in1_flipped.view(out_channels, in_channels//groups, l1)
+    m = torch.nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=1, padding=padding, groups=groups, bias=False)
+    in1_flipped = torch.flip(in1, [1,2])
 
-    output = m(in2.view(1, in_channels, l2))
+    m.weight.data = in1_flipped.view(out_channels, in_channels//groups, kernel_size[0], kernel_size[1])
 
-    return torch.squeeze(output.data[:,:,:l2], 0)
- 
+    output = m(in2.view(1, in_channels, input_size[0], input_size[1]))
+
+    # output.data is a 1 x 1 x width x height tensor
+    # and we slice it to the proper dimensions, because Conv2d returns too many
+    # rows and columns with the best possible padding
+    return torch.squeeze(output.data[:,:,:max_h,:max_w], 0) 
 
 
+
+
+B = [[[1., 2., 3.]], [[1.,1.,1.]]]
+A = [[[2., -3.], [14., 24.]], [[1.,1.], [1., 1.]]]
+
+torch_A = torch.tensor(A)
+torch_B = torch.tensor(B)
+
+print("torch_A = \n" + str(torch_A))
+print("torch_B = \n" + str(torch_B))
+print("independent_convolve2d_same = \n" + str(independent_convolve2d_same(torch_A, torch_B)) + "\n")
+
+print("single1: " + str(torch_A[0,:,:]))
+print("single2: " + str(torch_B[0,:,:]))
+print("single = \n" + str(convolve2d_same(torch_A[0,:,:], torch_B[0,:,:])) + "\n")
 
 
 
