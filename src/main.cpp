@@ -474,6 +474,30 @@ int main() {
 
 
 
+    {
+
+    TensorNetworkDefinition network;
+    network.SetConvolutionType(ConvolutionType::SAME);
+    network.AddNode("A", 1);
+    network.AddNode("B", 1);
+    network.AddEdge("i", {{"A", 0}, {"B", 0}}, Operation::CONVOLUTION, 0);   
+
+    Tensor A({3}); 
+    A[0] = 1; A[1] = 2; A[2] = 3;
+
+    Tensor B({2});
+    B[0] = 3; B[1] = 4;
+
+    Tensor out = network.Evaluate({std::move(A), std::move(B)});
+
+    std::cout << "out order: " << out.Order() << "\n";
+    std::cout << "out tensor_size: " << out.TensorSize() << "\n";
+    std::cout << "out tensor_size.size(): " << out.TensorSize().size() << "\n";
+
+    std::cout << out.FlatString() << "\n";
+    }
+
+
 /*
     {
 
@@ -499,7 +523,7 @@ int main() {
     std::cout << out.FlatString() << "\n";
     }
 */
-
+/*
     {
 
     TensorNetworkDefinition network;
@@ -509,8 +533,8 @@ int main() {
     network.AddEdge("i", {{"A", 0}, {"B", 0}}, Operation::CONVOLUTION, 0);  
     network.AddEdge("j", {{"B", 1}}, Operation::CONTRACTION); 
 
-    Tensor A({2}); 
-    A[0] = 1; A[1] = 2;
+    Tensor A({4}); 
+    A[0] = 1; A[1] = 2; A[2] = 3; A[3] = -5;
 
     Tensor B({2,1});
     B[{0,0}] = 3; B[{1,0}] = 4;
@@ -526,6 +550,7 @@ int main() {
 
 
     }
+*/
 
 
     

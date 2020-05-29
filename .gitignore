@@ -4,3 +4,4 @@ obj
 *.sw?
 .DS_Store
 self_notes
+__pycache__

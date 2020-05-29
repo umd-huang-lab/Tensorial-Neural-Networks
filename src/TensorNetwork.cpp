@@ -230,6 +230,7 @@ Tensor TensorNetworkDefinition::EvaluateConvNaive(const std::vector<Tensor>& ten
     // \todo there's some code duplication, could think about factoring things out, or better,
     //       reorganizing the code paths so eliminate separate paths doing the same thing 
     std::vector<size_t> out_tensor_size = CalcOutputTensorSize(tensors);   
+    std::cout << "out_tensor_size: " << out_tensor_size << "\n";
     Tensor out(std::move(out_tensor_size));
 
     

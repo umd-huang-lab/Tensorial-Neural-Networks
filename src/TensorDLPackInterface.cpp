@@ -15,7 +15,7 @@ namespace py = pybind11;
 
 namespace OPS {
 
-// this demonstrates the correctness of passing in a DLManagedTensor, we end up with a raw pointer to the underlying tensor memory
+// this demonstrates the usage of passing in a DLManagedTensor, we end up with a raw pointer to the underlying tensor memory
 // Though there's still the problem of figuring out what to do if the tensor data is already on the gpu
 float DLManagedTensorCoordinate(py::object pyobject_dlmtensor, size_t index) {
     DLManagedTensor* dlmtensor = (DLManagedTensor *)PyCapsule_GetPointer(pyobject_dlmtensor.ptr(), "dltensor");
@@ -29,7 +29,7 @@ float DLManagedTensorCoordinate(py::object pyobject_dlmtensor, size_t index) {
     return data[index];
 }
 
-// \index need to standardzed use of dlm_tensor vs dlpack_tensor vs dltensor
+// \index need to standardize use of dlm_tensor vs dlpack_tensor vs dltensor
 std::unique_ptr<Tensor> TNNFromDLPack(py::object pyobject_dlmtensor) {
 
     DLManagedTensor* dlmtensor 
@@ -37,7 +37,7 @@ std::unique_ptr<Tensor> TNNFromDLPack(py::object pyobject_dlmtensor) {
 
     std::unique_ptr<Tensor> tnn_tensor = std::make_unique<Tensor>(dlmtensor);
 
-    std::cout << "created tensor with tensor_size = " << tnn_tensor->TensorSize() << "\n";
+    
     return tnn_tensor; 
 }
 
@@ -78,17 +78,20 @@ void SpecificExampleTNN(std::vector<py::object> pyobject_dlmtensors) {
 }
 
 
-void ConvEinsum(std::vector<std::string> input_subscripts, 
-                std::string output_subscript,
-                std::string convolution_subscript, 
-                std::string subscripts_set,
-                std::vector<py::object> pyobject_dlmtensors)
+py::object ConvEinsum(std::vector<std::string> input_subscripts, 
+                      std::string output_subscript,
+                      std::string convolution_subscript, 
+                      std::string subscripts_set,
+                      std::vector<py::object> pyobject_dlmtensors)
 {
+
+    // \todo this seems to exhibit bugs not exhibited when calling TensorNetworkDefinition::Evaluate elsewhere
 
     std::vector<std::unique_ptr<Tensor>> tnn_tensors(pyobject_dlmtensors.size());
 
     for(size_t i = 0; i < tnn_tensors.size(); i++) {
         tnn_tensors[i] = TNNFromDLPack(pyobject_dlmtensors[i]);
+        std::cout << "tnn_tensors[" << i << "] = " << tnn_tensors[i]->FlatString() << "\n";
     }
 
 
@@ -98,9 +101,12 @@ void ConvEinsum(std::vector<std::string> input_subscripts,
     std::vector<Tensor> copies(tnn_tensors.size());
     for(size_t i = 0; i < copies.size(); i++) {
         copies[i] = *tnn_tensors[i];
+
+        std::cout << "copies[" << i << "] = " << copies[i].FlatString() << "\n";
     }
 
     TensorNetworkDefinition network;
+    network.SetConvolutionType(ConvolutionType::SAME);
     for(size_t i = 0; i < input_subscripts.size(); i++) {
         // just name the nodes after their index
         network.AddNode(std::to_string(i), input_subscripts[i].size());
@@ -139,9 +145,13 @@ void ConvEinsum(std::vector<std::string> input_subscripts,
 
         network.AddEdge(std::string(1, edge), std::move(edge_parts), op, output_mode);
     }
- 
+    
+     
     Tensor out = network.Evaluate(std::move(copies));
     std::cout << "out.FlatString(): " << out.FlatString() << "\n";
+    
+
+    
 }
 
 // \todo have to implement everything considered by dlpack_tensor
