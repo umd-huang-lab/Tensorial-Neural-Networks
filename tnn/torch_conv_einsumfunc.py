@@ -44,23 +44,22 @@ from parse_conv_einsum import _parse_conv_einsum_input
 
 
 def padding_1d(ker_size, input_size):     
-    # l1 denotes the shorter dim, l2 denotes the longer dim \todo
-    # this padding is chosen so that l2 + 2*padding - l1 + 1 >= l2, the left expression in this equation is the length of the
-    # output and and is obtained by examining the general formula given for the output length from the Conv1d documentation
-    # for some reason the answer is too short in the case l1 == 2, so I manually set the padding to 1... sometimes however, like when
-    # l1 = l2 = 2 this causes the output vector to be too long, so I truncate the output vector
-    #if(dim == 2):
-    #        return 1
-    #return (dim-1)//2
-    #return min_size//2
+    # see https://pytorch.org/docs/master/generated/torch.nn.Conv1d.html for the definition
+    # under the Shape section for the definition of the padding. We add 1 so the integer division
+    # by 2 errs large instead of small
+    # for 1d convolutions ker_size < input_size but this is not true for higher dimensions, and I
+    # use this function to compute those paddings
     return (max(ker_size, input_size) - input_size + ker_size)//2
 
 def padding_2d(ker_size, input_size):
-    #h = (max(ker_size[0], input_size[0]) - input_size[0] + ker_size[0])//2
-    #w = (max(ker_size[1], input_size[1]) - input_size[1] + ker_size[1])//2
-    #return (h,w) 
     return (padding_1d(ker_size[0], input_size[0]), padding_1d(ker_size[1], input_size[1]))
 
+
+def padding_3d(ker_size, input_size):
+    return (padding_1d(ker_size[0], input_size[0]), padding_1d(ker_size[1], input_size[1]), padding_1d(ker_size[2], input_size[2]))
+
+def padding_nd(ker_size, input_size):
+    return tuple(padding_1d(ker_size[i], input_size[i]) for i in range(0,len(ker_size)))
 
 
 def convolve_same(vec1, vec2):
@@ -238,14 +237,14 @@ def convolve2d_same(mat1, mat2):
 
 
 
-def independent_convolve2d_same(in1, in2):
+def independent_convolve2d_same(tens1, tens2):
     
-    num_convolutions = in1.size(0)
-    if(num_convolutions != in2.size(0)):        
+    num_convolutions = tens1.size(0)
+    if(num_convolutions != tens2.size(0)):        
         print("Error: the inputs must have the same length in the 0th mode")
 
-    kernel_size = in1.size()[1:3]
-    input_size = in2.size()[1:3]
+    kernel_size = tens1.size()[1:3]
+    input_size = tens2.size()[1:3]
  
     max_h = max(kernel_size[0], input_size[0])
     max_w = max(kernel_size[1], input_size[1])
@@ -259,33 +258,139 @@ def independent_convolve2d_same(in1, in2):
     padding = padding_2d(kernel_size, input_size)
     
     m = torch.nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=1, padding=padding, groups=groups, bias=False)
-    in1_flipped = torch.flip(in1, [1,2])
+    tens1_flipped = torch.flip(tens1, [1,2])
 
-    m.weight.data = in1_flipped.view(out_channels, in_channels//groups, kernel_size[0], kernel_size[1])
+    m.weight.data = tens1_flipped.view(out_channels, in_channels//groups, kernel_size[0], kernel_size[1])
 
-    output = m(in2.view(1, in_channels, input_size[0], input_size[1]))
+    output = m(tens2.view(1, in_channels, input_size[0], input_size[1]))
 
     # output.data is a 1 x 1 x width x height tensor
     # and we slice it to the proper dimensions, because Conv2d returns too many
-    # rows and columns with the best possible padding
+    # rows and columns, even with the best possible padding
     return torch.squeeze(output.data[:,:,:max_h,:max_w], 0) 
 
 
 
 
-B = [[[1., 2., 3.]], [[1.,1.,1.]]]
-A = [[[2., -3.], [14., 24.]], [[1.,1.], [1., 1.]]]
+#B = [[[1., 2., 3.]], [[1.,1.,1.]]]
+#A = [[[2., -3.], [14., 24.]], [[1.,1.], [1., 1.]]]
+#
+#torch_A = torch.tensor(A)
+#torch_B = torch.tensor(B)
+#
+#
+#print("torch_A.size() = " + str(torch_A.size()))
+#print("torch_B.size() = " + str(torch_B.size()))
+#print("torch_A = \n" + str(torch_A))
+#print("torch_B = \n" + str(torch_B))
+#print("independent_convolve2d_same = \n" + str(independent_convolve2d_same(torch_A, torch_B)) + "\n")
+#
+#print("single1: " + str(torch_A[0,:,:]))
+#print("single2: " + str(torch_B[0,:,:]))
+#print("single = \n" + str(convolve2d_same(torch_A[0,:,:], torch_B[0,:,:])) + "\n")
 
-torch_A = torch.tensor(A)
-torch_B = torch.tensor(B)
 
-print("torch_A = \n" + str(torch_A))
-print("torch_B = \n" + str(torch_B))
-print("independent_convolve2d_same = \n" + str(independent_convolve2d_same(torch_A, torch_B)) + "\n")
 
-print("single1: " + str(torch_A[0,:,:]))
-print("single2: " + str(torch_B[0,:,:]))
-print("single = \n" + str(convolve2d_same(torch_A[0,:,:], torch_B[0,:,:])) + "\n")
+
+
+# \todo I think this is correct but I am less certain because numpy/scipy don't provide a 3d convolution for me to test this against
+def convolve3d_same(tens1, tens2):
+    
+    num_convolutions = 1  
+
+    kernel_size = tens1.size()
+    input_size = tens2.size() 
+ 
+    max_d = max(kernel_size[0], input_size[0])
+    max_h = max(kernel_size[1], input_size[1])
+    max_w = max(kernel_size[2], input_size[2]) 
+ 
+    in_channels = num_convolutions
+    out_channels = num_convolutions
+    groups = num_convolutions
+
+   
+    padding = padding_3d(kernel_size, input_size)
+    
+    m = torch.nn.Conv3d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=1, padding=padding, groups=groups, bias=False)
+    tens1_flipped = torch.flip(tens1, [0,1,2])
+
+    m.weight.data = tens1_flipped.view(out_channels, in_channels//groups, kernel_size[0], kernel_size[1], kernel_size[2])
+
+    output = m(tens2.view(1, in_channels, input_size[0], input_size[1], input_size[2]))
+
+    # output.data is a 1 x 1 x depth x width x height tensor
+    # and we slice it to the proper dimensions, because Conv3d returns too many
+    # rows and columns, even with the best possible padding
+    return torch.squeeze(torch.squeeze(output.data[:,:,:max_d,:max_h,:max_w], 0),0) 
+ 
+
+
+##A = [[[1.,1.], [1.,1.]], [[1.,1.], [1.,1.]], [[1.,1.], [1.,1.]], [[1.,1.], [1.,1.]]]
+#A = [[[1.], [1.]], [[1.], [1.]], [[1.], [1.]], [[1.], [1.]]]
+#B = [[[1.,1.], [1.,1.]], [[1.,1.], [1.,1.]], [[1.,1.], [1.,1.]], [[1.,1.], [1.,1.]]]
+#
+#torch_A = torch.tensor(A)
+#torch_B = torch.tensor(B)
+#print("torch_A = \n" + str(torch_A))
+#print("torch_B = \n" + str(torch_B) + "\n")
+#print("torch_A.size() = " + str(torch_A.size()))
+#print("torch_B.size() = " + str(torch_B.size()))
+#
+#print("3d convolve = \n" + str(convolve3d_same(torch_A, torch_B)) + "\n")
+
+
+
+# \todo I think this is correct but I am less certain because numpy/scipy don't provide a 3d convolution for me to test this against
+def independent_convolve3d_same(tens1, tens2):
+    
+    num_convolutions = tens1.size(0)
+    if(num_convolutions != tens2.size(0)):        
+        print("Error: the inputs must have the same length in the 0th mode")
+
+    kernel_size = tens1.size()[1:4]
+    input_size = tens2.size()[1:4]
+  
+    max_d = max(kernel_size[0], input_size[0])
+    max_h = max(kernel_size[1], input_size[1])
+    max_w = max(kernel_size[2], input_size[2]) 
+
+    
+ 
+    in_channels = num_convolutions
+    out_channels = num_convolutions
+    groups = num_convolutions
+
+   
+    padding = padding_3d(kernel_size, input_size)
+    
+    m = torch.nn.Conv3d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=1, padding=padding, groups=groups, bias=False)
+    tens1_flipped = torch.flip(tens1, [1,2,3])
+
+    m.weight.data = tens1_flipped.view(out_channels, in_channels//groups, kernel_size[0], kernel_size[1], kernel_size[2])
+
+    output = m(tens2.view(1, in_channels, input_size[0], input_size[1], input_size[2]))
+
+    # output.data is a 1 x 1 x width x height tensor
+    # and we slice it to the proper dimensions, because Conv2d returns too many
+    # rows and columns, even with the best possible padding
+    return torch.squeeze(output.data[:,:,:max_d,:max_h,:max_w], 0) 
+
+
+
+
+##A = [[[[1.,1.], [1.,1.]], [[1.,1.], [1.,1.]], [[1.,1.], [1.,1.]], [[1.,1.], [1.,1.]]]]
+#A = [[[[1.], [1.]], [[1.], [1.]], [[1.], [1.]], [[1.], [1.]]]]
+#B = [[[[1.,1.], [1.,1.]], [[1.,1.], [1.,1.]], [[1.,1.], [1.,1.]], [[1.,1.], [1.,1.]]]]
+#
+#torch_A = torch.tensor(A)
+#torch_B = torch.tensor(B)
+#print("torch_A = \n" + str(torch_A))
+#print("torch_B = \n" + str(torch_B) + "\n")
+#print("torch_A.size() = " + str(torch_A.size()))
+#print("torch_B.size() = " + str(torch_B.size()))
+#
+#print("3d convolve = \n" + str(independent_convolve3d_same(torch_A, torch_B)) + "\n")
 
 
 
