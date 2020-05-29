@@ -43,36 +43,48 @@ from parse_conv_einsum import _parse_conv_einsum_input
 #
 
 
-
-
-def convolve_same(vec1, vec2):
-    # this function should agree with the convolve functions offered by numpy and scipy, with mode='same' 
-    l1 = len(vec1)
-    l2 = len(vec2)
- 
-    if(l1 > l2): # Conv1d requires the kernel to be shorter than the input
-        return convolve_same(vec2, vec1)
- 
-    kernel_size = l1
-    in_channels = 1
-    out_channels = 1
-    groups = 1
-    padding = (l1-1)//2
-    if(l1 == 2): 
-        padding = 1
-        
+def padding_1d(ker_size, input_size):     
+    # l1 denotes the shorter dim, l2 denotes the longer dim \todo
     # this padding is chosen so that l2 + 2*padding - l1 + 1 >= l2, the left expression in this equation is the length of the
     # output and and is obtained by examining the general formula given for the output length from the Conv1d documentation
     # for some reason the answer is too short in the case l1 == 2, so I manually set the padding to 1... sometimes however, like when
     # l1 = l2 = 2 this causes the output vector to be too long, so I truncate the output vector
+    #if(dim == 2):
+    #        return 1
+    #return (dim-1)//2
+    #return min_size//2
+    return (max(ker_size, input_size) - input_size + ker_size)//2
+
+def padding_2d(ker_size, input_size):
+    #h = (max(ker_size[0], input_size[0]) - input_size[0] + ker_size[0])//2
+    #w = (max(ker_size[1], input_size[1]) - input_size[1] + ker_size[1])//2
+    #return (h,w) 
+    return (padding_1d(ker_size[0], input_size[0]), padding_1d(ker_size[1], input_size[1]))
+
+
+
+def convolve_same(vec1, vec2):
+    # this function should agree with the convolve functions offered by numpy and scipy, with mode='same' 
+    kernel_size = len(vec1)
+    input_size = len(vec2)
+ 
+    if(kernel_size > input_size): # Conv1d requires the kernel to be shorter than the input
+        return convolve_same(vec2, vec1)
+  
+    in_channels = 1
+    out_channels = 1
+    groups = 1
+    
+    padding = padding_1d(kernel_size, input_size)   
+    
     # \todo I'm not sure on which inputs the output vector will have the right length so I'm just defensively truncating it
     
     
     m = torch.nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=1, padding=padding, groups=groups, bias=False)
     m.weight.data[0, 0, :] = torch.flip(vec1, [0])
 
-    output = m(vec2.view(1, 1, l2))
-    return output.data[0,0,:l2]
+    output = m(vec2.view(1, 1, input_size))
+    return output.data[0,0,:input_size]
 
 
 #
@@ -88,6 +100,7 @@ def convolve_same(vec1, vec2):
 #
 
 
+
 def independent_convolve_same(mat1, mat2):
     # the point of this function is to try to compute many convolutions using one call to Conv1d
 
@@ -95,48 +108,131 @@ def independent_convolve_same(mat1, mat2):
     if(num_convolutions != mat2.size(0)):
         print("Error: The inputs must have the same number of rows")
 
-    l1 = mat1.size(1)
-    l2 = mat2.size(1)
+    kernel_size = mat1.size(1)
+    input_size = mat2.size(1)
  
-    if(l1 > l2): # Conv1d requires the kernel to be shorter than the input
+    if(kernel_size > input_size): # Conv1d requires the kernel to be shorter than the input
         return convolve_same(mat2, mat1)
  
-    kernel_size = l1
     in_channels = num_convolutions
     out_channels = num_convolutions
     groups = num_convolutions
 
-    # this padding is chosen so that l2 + 2*padding - l1 + 1 >= l2, the left expression in this equation is the length of the
+    # this padding is chosen so that input_size + 2*padding - kernel_size + 1 >= input_size, the left expression in this equation is the length of the
     # output and and is obtained by examining the general formula given for the output length from the Conv1d documentation
-    padding = (l1-1)//2
-    if(l1 == 2): 
-        padding = 1
+    padding = padding_1d(kernel_size, input_size) 
   
     m = torch.nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=1, padding=padding, groups=groups, bias=False)
     mat1_flipped = torch.flip(mat1, [1])
-    m.weight.data = mat1_flipped.view(out_channels, in_channels//groups, l1)
+    m.weight.data = mat1_flipped.view(out_channels, in_channels//groups, kernel_size)
 
-    output = m(mat2.view(1, in_channels, l2))
+    output = m(mat2.view(1, in_channels, input_size))
 
-    return torch.squeeze(output.data[:,:,:l2], 0)
+    return torch.squeeze(output.data[:,:,:input_size], 0)
     
 
 
-#A = [ [1., 2.], [3., 4.]]
-#B = [ [2., -3.], [14., 24.]]
+A = [ [1., 2.], [3., 4.]]
+B = [ [2., -3.], [14., 24.]]
+
+torch_A = torch.tensor(A)
+torch_B = torch.tensor(B)
+
+print(torch_A)
+print(torch_B)
+print("Torch: " + str(independent_convolve_same(torch_A, torch_B)))
+
+print("single1: " + str(torch_A[1, :]))
+print("single2: " + str(torch_B[1, :]))
+print("single: " + str(convolve_same(torch_A[1, :], torch_B[1, :])))
+import numpy as np
+print("numpy: " + str(np.convolve(list(torch_A[1, :]), list(torch_B[1, :]), mode='same')))
+
+
+
+def convolve2d_same(mat1, mat2):
+    
+    num_convolutions = 1  
+
+    kernel_size = mat1.size()
+    input_size = mat2.size() 
+ 
+    max_h = max(kernel_size[0], input_size[0])
+    max_w = max(kernel_size[1], input_size[1])
+ 
+    in_channels = num_convolutions
+    out_channels = num_convolutions
+    groups = num_convolutions
+
+   
+    padding = padding_2d(kernel_size, input_size)
+   
+  
+  
+    m = torch.nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=1, padding=padding, groups=groups, bias=False)
+    mat1_flipped = torch.flip(mat1, [0,1])
+
+    m.weight.data = mat1_flipped.view(out_channels, in_channels//groups, kernel_size[0], kernel_size[1])
+
+    output = m(mat2.view(1, in_channels, input_size[0], input_size[1]))
+
+      # output.data is a 1 x 1 x width x height tensor
+    # and we slice it to the proper dimensions, because Conv2d returns too many
+    # rows and columns with the best possible padding
+    return torch.squeeze(output.data[:,:,:max_h,:max_w], 0) 
+    
+
+    
+
+
+
+#A = [[1.,1.,1.], [1.,1.,1.], [1.,1.,1.]]
+#B = [[1.,2.,3.], [4.,5.,6.], [7.,8.,9.]]
 #
 #torch_A = torch.tensor(A)
 #torch_B = torch.tensor(B)
+#print("torch_A = \n" + str(torch_A))
+#print("torch_B = \n" + str(torch_B))
+#print("2d convolve = \n" + str(convolve2d_same(torch_A, torch_B)))
 #
-#print(torch_A)
-#print(torch_B)
-#print("Torch: " + str(independent_convolve_same(torch_A, torch_B)))
-#
-#print("single1: " + str(torch_A[1, :]))
-#print("single2: " + str(torch_B[1, :]))
-#print("single: " + str(convolve_same(torch_A[1, :], torch_B[1, :])))
 #import numpy as np
-#print("numpy: " + str(np.convolve(list(torch_A[1, :]), list(torch_B[1, :]), mode='same')))
+#from scipy import signal
+#print("signal conv = \n" + str(signal.convolve2d(np.array(A), np.array(B), mode='full')))
+#
+
+
+
+
+#
+##B = [[1.,1.,1.], [1.,1.,1.], [1., 1.,1.],[1., 1.,1.]]
+#B = [[1.,1.,1.,1.]]
+##A = [[1.,1.], [1.,1.]]
+##A = [[1.]]
+#A = [[1.],[1.],[1.],[1.]]
+##B = [[1.,1.,1.,1.], [1.,1.,1.,1.], [1.,1.,1.,1.], [1.,1.,1.,1.]]
+##A = [[1.,2.,3.], [4.,5.,6.], [7.,8.,9.]]
+#
+#torch_A = torch.tensor(A)
+#torch_B = torch.tensor(B)
+#print("torch_A = \n" + str(torch_A))
+#print("torch_B = \n" + str(torch_B) + "\n")
+#print("torch_A.size() = " + str(torch_A.size()))
+#print("torch_B.size() = " + str(torch_B.size()))
+#
+#print("2d convolve = \n" + str(convolve2d_same(torch_A, torch_B)) + "\n")
+#
+#import numpy as np
+#from scipy import signal
+#print("signal conv = \n" + str(signal.convolve2d(np.array(A), np.array(B), mode='full')) + "\n")
+#
+
+
+
+
+#print("torch_A[0] = " + str(torch_A[0]))
+#print("torch_B[1] = " + str(torch_B[1]))
+#print("conv = " + str(convolve_same(torch_A[0], torch_B[1])))
+
 
 
 
@@ -164,9 +260,9 @@ def independent_convolve2d_same(in1, in2):
     out_channels = num_convolutions
     groups = num_convolutions 
 
-    padding = (l1-1)//2
-    if(l1 == 2): 
-        padding = 1
+    
+    padding = padding_1d(l1)  
+  
   
     m = torch.nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=1, padding=padding, groups=groups, bias=False)
     in1_flipped = torch.flip(in1, [1])
