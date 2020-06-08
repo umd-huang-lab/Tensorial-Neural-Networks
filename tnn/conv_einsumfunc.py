@@ -17,7 +17,7 @@ from parse_conv_einsum import _parse_conv_einsum_input
 
 
 # expects pytorch tensors for now
-def conv_einsum(*operands):
+def cpp_conv_einsum(*operands):
     input_subscripts, output_subscript, convolution_subscript, subscripts_set, operands \
         = _parse_conv_einsum_input(operands)
 

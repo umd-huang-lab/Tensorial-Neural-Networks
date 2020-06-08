@@ -795,21 +795,52 @@ def ijklmn_oiklmn_to_oijlmn_bar_lmn(kernel, input_tens):
     
     return torch.reshape(output.data[:,:,:max_d,:max_h,:max_w], (batch_size, groups, out_channels//groups, max_d, max_h, max_w))
 
-torch_A = torch.randn(100,4,2,3,180,1)
-torch_B = torch.randn(6,100,2,30,120,1)
+#torch_A = torch.randn(10,4,2,3,180,1)
+#torch_B = torch.randn(6,10,2,30,120,1)
+#
+##torch_A = torch.randn(2,2,2,2,2,1)
+##torch_B = torch.randn(2,2,2,2,2,1)
+#
+#eins = ijklmn_oiklmn_to_oijlmn_bar_lmn(torch_A, torch_B)
+#eins2d = ijklm_niklm_to_nijlm_bar_lm(torch_A[:,:,:,:,:,0], torch_B[:,:,:,:,:,0])
+#print((torch.squeeze(eins) - eins2d).sum())
 
-#torch_A = torch.randn(2,2,2,2,2,1)
-#torch_B = torch.randn(2,2,2,2,2,1)
 
-eins = ijklmn_oiklmn_to_oijlmn_bar_lmn(torch_A, torch_B)
-eins2d = ijklm_niklm_to_nijlm_bar_lm(torch_A[:,:,:,:,:,0], torch_B[:,:,:,:,:,0])
-print((torch.squeeze(eins) - eins2d).sum())
+def convolution_atomic_operation(tens1, tens2, num_convolutions):
+    # This opration expects the inputs tens1 and tens2 to be shaped/permuted according to
+    # the "atomic forms" given by the following functions
 
-
+    if num_convolutions == 0:
+        print("Error: convolution_atomic_operation expects at least one convolution index")
+    elif num_convolutions == 1:
+        return ijkl_mikl_to_mijl_bar_l(tens1, tens2)
+    elif num_convolutions == 2:
+        return ijklm_niklm_to_nijlm_bar_lm(tens1, tens2)
+    elif num_convolutions == 3:
+        return ijklmn_oiklmn_to_oijlmn_bar_lmn(tens1, tens2)
+    else:
+        print("convolution_atomic_operation num_convolutions >= 4 not implemented")
 
 
 def occurrence_indices(collection, possible_occurrences):
     return [i for i in range(0, len(collection)) if collection[i] in possible_occurrences]
+
+def elements(collection, occurrence_indices_list):
+    return [collection[i] for i in occurrence_indices_list]
+
+# this returns the index form of the permutation taking A to permutation_of_A, where A is indexed collection
+def permutation_indices(A, permutation_of_A):
+    return [x for x,_ in sorted(zip(range(0, len(permutation_of_A)), permutation_of_A), key=lambda perm_el: A.index(perm_el[1]))]
+
+
+def permutation_inverse(perm):
+    inverse = [0]*len(perm)
+
+    for i, p in enumerate(perm):
+        inverse[p] = i
+
+    return inverse
+
 
 def permuted_collection(collection, permutation):
     # returns list
@@ -820,157 +851,282 @@ def permuted_collection(collection, permutation):
     return permuted
 
 
-# this function computes the special case of conv_einsums where the only operations are N-dimensional convolution
-# and elementwise multiplication
-def conv_einsum_pair_convolution_only(*operands):
-    # \type This function assumes the einsum string is of a particular type
-    input_subscripts, output_subscript, convolution_subscript, subscripts_set, operands \
-        = _parse_conv_einsum_input(operands) 
 
-    # \todo just assuming there's only a single convolution for now, will add support for N dimensional convolutions
-    # actually, I'll try to implement 2 and 3 way convolutions first, because that will give me a better idea for what
-    # to expect when implementing this method
+
+def atomic_permutation(input_subscripts0, input_subscripts1, output_subscript, convolution_subscript, subscripts_set, input0_tensor_size, input1_tensor_size):
+    # This computes the permutations necessary to permute the two input tensors and hypothetical output tensor into atomic form.
+    # This also returns number of indices of each type: group, batch0, batch1, contraction, convolution
+    # This also returns the convolution indices which are supposed to be summed out after the convolution is done
+
+    # This assumes there are no nonoutput indices appearing in only one tensor.
+    # This also assumes any convolution index appears in both tensors. A convolution index appearing in only one of the two tensors
+    # should be turned into a contraction index.
+    #
+    # Due to the definitions of Conv1d, Conv2d, and Conv3d, we need to permute our tensors so that
+    # the indices are laid out as follows:
+    # (group indices, batch0 indices, contraction indices, convolution indices) x (batch1 indices, group indices, contraction indices, convolution indices)
+    #  -> (batch1 indices, group indices, batch0 indices, convolution indices)
+    #
+    # The indices of each type must appear in the same order on both sides. That order is determined by the order they appear as outputs for output indices,
+    # and the order they appear in the first tensor for nonoutput indices (which are contractions and convolutions without outputs)
+    # Also, if a convolution index is not an output, then we must add it in as an output and sum it out at the end. It is added after the convolution indices which are outputs, in the
+    # order it appears in the first tensor. 
+
+
+    # this can surely be optimized, it is probably not a bottleneck though
+    # \todo there may be a cleaner way to organize this code, also I tacked on input0_tensor_size and input1_tensor_size and the computation those are used for
     
-    print("input_subscripts " + str(input_subscripts))
+    print("input_subscripts0 = " + input_subscripts0) 
+    print("input_subscripts1 = " + input_subscripts1) 
+
+    input_subscripts0_set = set(input_subscripts0)
+    input_subscripts1_set = set(input_subscripts1)
+    output_subscript_set = set(output_subscript)
+
+    batch0_indices_set = set(subscripts_set) - input_subscripts1_set 
+    batch1_indices_set = set(subscripts_set) - input_subscripts0_set 
+    both_indices_set = input_subscripts0_set.intersection(input_subscripts1_set)
+    convolution_indices_set = set(convolution_subscript)
+    nonoutput_convolution_indices_set = convolution_indices_set - output_subscript_set
+    group_indices_set = both_indices_set.intersection(output_subscript_set) - convolution_indices_set
+    contraction_indices_set = both_indices_set - output_subscript_set - convolution_indices_set
     
-    # \todo I slapped together the code to compute these permutations of the two input_subscripts such that
-    # the convolutions would occur at the end, and the second permuted subscript would have its convolutions
-    # appear in the same order as the first permuted subscript. I think there are better ways of writing
-    # this code. Aside from code cleanliness improvements, of which many are possible (including better naming), 
-    # it might be better if the permutations minimize the total number of modes which have to be swapped, instead of
-    # arbitrarily preserving the order of the modes in the first tensor. There should be many possible minor
-    # optimizations, like sticking to lists instead of converting between lists and strings. 
-    def conv_index_perm(input_subscript, convolution_subscript, enforce_convolution_order=False):
-        
-        conv_positions = occurrence_indices(input_subscript, convolution_subscript)
-        
-        #print("conv_positions1 = " + str(conv_positions1) + "\n")
-        conv_positions_perm = []
-        conv_perm = [-1]*len(input_subscript) 
-        if enforce_convolution_order:
-            conv_positions_perm = [-1]*len(convolution_subscript) 
 
-            # the convolution subscript in the order it appears in the input_subscript
-            input_convolution_subscript = ''.join(input_subscript[i] for i in conv_positions)
-
-            ind = 0            
-            for s in convolution_subscript:
-                conv_positions_perm[ind] = input_convolution_subscript.index(s)
-                ind += 1
-
-            for i in range(0, len(conv_positions)):
-                conv_perm[conv_positions[conv_positions_perm[i]]] = len(input_subscript) - len(conv_positions) + i
-        else:
-            for i in range(0, len(conv_positions)):
-                conv_perm[conv_positions[i]] = len(input_subscript) - len(conv_positions) + i
+    batch0_positions = occurrence_indices(input_subscripts0, batch0_indices_set)
+    batch1_positions = occurrence_indices(input_subscripts1, batch1_indices_set)
     
-        cur_non_conv_ind = 0
-        for i in range(0, len(conv_perm)):
-            if(conv_perm[i] == -1):
-                conv_perm[i] = cur_non_conv_ind
-                cur_non_conv_ind += 1
-        
-        return conv_perm, conv_positions
+    group0_positions = occurrence_indices(input_subscripts0, group_indices_set) # positions in input_subscripts0 which have group indices
+    group1_positions = occurrence_indices(input_subscripts1, group_indices_set) # likewise for input_subscripts1
+    contraction0_positions = occurrence_indices(input_subscripts0, contraction_indices_set)
+    contraction1_positions = occurrence_indices(input_subscripts1, contraction_indices_set)
+    convolution0_positions = occurrence_indices(input_subscripts0, convolution_indices_set)
+    convolution1_positions = occurrence_indices(input_subscripts1, convolution_indices_set)
 
-    conv_index_perm0, conv_positions0 = conv_index_perm(input_subscripts[0], convolution_subscript)   
-    input_subscript0_ordered_conv_indices = ''.join([input_subscripts[0][i] for i in conv_positions0])
-    conv_index_perm1, _ = conv_index_perm(input_subscripts[1], input_subscript0_ordered_conv_indices, True)
-  
+    nonoutput_convolution0_positions = occurrence_indices(input_subscripts0, nonoutput_convolution_indices_set) 
+    output_subscript_conv_appended = output_subscript + ''.join(elements(input_subscripts0, nonoutput_convolution0_positions))
 
     
-            
-    input_subscript0_permuted = ''.join(permuted_collection(input_subscripts[0], conv_index_perm0))
-    input_subscript1_permuted = ''.join(permuted_collection(input_subscripts[1], conv_index_perm1))
+    convolution_out_positions = occurrence_indices(output_subscript_conv_appended, convolution_indices_set)
+    batch0_out_positions = occurrence_indices(output_subscript, batch0_indices_set)
+    batch1_out_positions = occurrence_indices(output_subscript, batch1_indices_set)
+    group_out_positions = occurrence_indices(output_subscript, group_indices_set)
+
     
-    operand0_permuted = operands[0].permute(conv_index_perm0)
-    operand1_permuted = operands[1].permute(conv_index_perm1)
+    batch0_perm = permutation_indices(elements(input_subscripts0, batch0_positions), elements(output_subscript, batch0_out_positions))
+    batch1_perm = permutation_indices(elements(input_subscripts1, batch1_positions), elements(output_subscript, batch1_out_positions))
+    group0_perm = permutation_indices(elements(input_subscripts0, group0_positions), elements(output_subscript, group_out_positions))
+    group1_perm = permutation_indices(elements(input_subscripts1, group1_positions), elements(output_subscript, group_out_positions))
+    contraction0_perm = list(range(0, len(contraction0_positions)))
+    contraction1_perm = permutation_indices(elements(input_subscripts1, contraction1_positions), elements(input_subscripts0, contraction0_positions))
+    convolution0_perm = permutation_indices(elements(input_subscripts0, convolution0_positions), elements(output_subscript_conv_appended, convolution_out_positions))    
+    convolution1_perm = permutation_indices(elements(input_subscripts1, convolution1_positions), elements(output_subscript_conv_appended, convolution_out_positions))
 
-    print("operand0 = \n" + str(operands[0]))
-    print("operand0_permuted = \n" + str(operand0_permuted) + "\n")
+    batch0_out_perm = list(range(0, len(batch0_out_positions)))
+    batch1_out_perm = list(range(0, len(batch1_out_positions)))
+    group_out_perm = list(range(0, len(group_out_positions)))
+    convolution_out_perm = list(range(0, len(convolution_out_positions)))
 
-    print("operand1 = \n" + str(operands[1]))
-    print("operand1_permuted = \n" + str(operand1_permuted) + "\n")
     
-  
-    print("convolution_subscript = " + convolution_subscript)
-    print("conv_index_perm0 = " + str(conv_index_perm0))
-    print("input_subscript0 = " + str(input_subscripts[0]) + " input_subscript0_permuted " + input_subscript0_permuted + "\n")
+    type_sizes = [len(group0_positions), len(batch0_positions), len(batch1_positions), len(contraction0_positions), len(convolution_subscript)]
+
+    def calc_permutation(types, positions, permutations, subscript):
+        permutation_size = 0 
+        for t in range(0, len(types)):
+            permutation_size += type_sizes[types[t]]
+        perm_out = [0] * permutation_size
+
+        type_offset = 0
+        for t in range(0, len(types)):
+            j = 0 
+            for i in range(0, type_sizes[types[t]]): 
+                perm_out[type_offset + permutations[t][i]] = positions[t][i] 
+
+            type_offset += type_sizes[types[t]]
+                
+
+        return perm_out
+
+
+
+    GROUP = 0
+    BATCH0 = 1
+    BATCH1 = 2
+    CONTRACTION = 3
+    CONVOLUTION = 4
+
+    input0_positions = [group0_positions, batch0_positions, contraction0_positions, convolution0_positions]
+    input0_permutations = [group0_perm, batch0_perm, contraction0_perm, convolution0_perm]
+    input0_types = [GROUP, BATCH0, CONTRACTION, CONVOLUTION]
+    input0_perm = calc_permutation(input0_types, input0_positions, input0_permutations, input_subscripts0)
+     
+
+    input1_positions = [batch1_positions, group1_positions, contraction1_positions, convolution1_positions]
+    input1_permutations = [batch1_perm, group1_perm, contraction1_perm, convolution1_perm]
+    input1_types = [BATCH1, GROUP, CONTRACTION, CONVOLUTION]
+    input1_perm = calc_permutation(input1_types, input1_positions, input1_permutations, input_subscripts1)
+
+ 
+    out_positions = [batch1_out_positions, group_out_positions, batch0_out_positions, convolution_out_positions] 
+    out_permutations = [batch1_out_perm, group_out_perm, batch0_out_perm, convolution_out_perm] 
+    out_types = [BATCH1, GROUP, BATCH0, CONVOLUTION]
+    out_perm = calc_permutation(out_types, out_positions, out_permutations, output_subscript_conv_appended)
+
+
     
-    print("conv_index_perm1 = " + str(conv_index_perm1))
-    print("input_subscript1 = " + str(input_subscripts[1]) + " input_subscript1_permuted " + input_subscript1_permuted + "\n")
+    batch0_total_dim = 1
+    for pos in batch0_positions:
+        batch0_total_dim *= input0_tensor_size[pos]
 
-    # now we reshape the tensors so that the non-convolution indices are treated as a single index 
-    last_non_conv_index0 = len(input_subscripts[0]) - len(convolution_subscript) - 1
-    last_non_conv_index1 = len(input_subscripts[1]) - len(convolution_subscript) - 1
-    operand0_permuted_flattened = torch.flatten(operand0_permuted, start_dim=0, end_dim=last_non_conv_index0)
-    operand1_permuted_flattened = torch.flatten(operand1_permuted, start_dim=0, end_dim=last_non_conv_index1)
+    batch1_total_dim = 1
+    for pos in batch1_positions:
+        batch1_total_dim *= input1_tensor_size[pos]
+
+    group_total_dim = 1
+    for pos in group0_positions:
+        group_total_dim *= input0_tensor_size[pos] 
+
+    contraction_total_dim = 1
+    for pos in contraction0_positions:
+        contraction_total_dim *= input0_tensor_size[pos]
+
+
     
-    print("operand0_permuted_flattened.size() = " + str(operand0_permuted_flattened.size()))
-    print("operand1_permuted_flattened.size() = " + str(operand1_permuted_flattened.size()))
+    # \todo convolution_out_total_dim is computed incorrectly
+    print("convolution0_perm = " + str(convolution0_perm))
+    print("convolution1_perm = " + str(convolution1_perm))
+
+    convolution0_perm_inverse = permutation_inverse(convolution0_perm) 
+    convolution1to0_perm = [convolution0_perm_inverse[convolution1_perm[i]] for i in range(0, len(convolution1_perm))]
+    print("convolution1to0_perm = " + str(convolution1to0_perm))
+
+    conv0_type_offset = sum(elements(type_sizes, input0_types)[0:3])
+    conv1_type_offset = sum(elements(type_sizes, input1_types)[0:3])
+    print("conv0_type_offset = " + str(conv0_type_offset))
+    print("conv1_type_offset = " + str(conv1_type_offset))
+    convolution_out_total_dim = 1
+    #for i in range(0, len(convolution0_positions)):
+    #    convolution_out_total_dim *= max(input0_tensor_size[conv0_type_offset+convolution0_perm[i]], \
+    #                                     input1_tensor_size[conv1_type_offset+convolution1_perm[i]]) 
+    
+    for i in range(0, len(convolution0_positions)):
+        conv0_sz_i = input0_tensor_size[convolution0_positions[convolution0_perm[i]]]
+        conv1_sz_i = input1_tensor_size[convolution1_positions[convolution1_perm[i]]]
+        convolution_out_total_dim *= max(conv0_sz_i, conv0_sz_i)
+    print("convolution_out_total_dim = " + str(convolution_out_total_dim))
+
+    print("\n")
+    print("convolution0_positions: " + str(convolution0_positions))
+    print("convolution1_positions: " + str(convolution1_positions))
+    print("convolution0_perm: " + str(convolution0_perm))
+    print("convolution1_perm: " + str(convolution1_perm))
+    print("\n")
+
+    convolution0_total_dim = 1
+    for pos in convolution0_positions:
+        convolution0_total_dim *= input0_tensor_size[pos]
+
+    convolution1_total_dim = 1
+    for pos in convolution1_positions:
+        convolution1_total_dim *= input1_tensor_size[pos]
 
 
+    reshaped0_tensor_size = [group_total_dim, batch0_total_dim, contraction_total_dim, convolution0_total_dim]
+    reshaped1_tensor_size = [batch1_total_dim, group_total_dim, contraction_total_dim, convolution1_total_dim]
+    unreshaped_out_tensor_size = [batch1_total_dim, group_total_dim, batch0_total_dim, convolution_out_total_dim]  
+
+
+    
+    return input0_perm, input1_perm, out_perm, output_subscript_conv_appended, reshaped0_tensor_size, reshaped1_tensor_size, unreshaped_out_tensor_size
 
 
 def conv_einsum_pair(*operands):
-    
-    # first evaluate all indices which don't appear as outputs and which appear in only one of the two tensors
+
     input_subscripts, output_subscript, convolution_subscript, subscripts_set, operands \
         = _parse_conv_einsum_input(operands) 
+     
+    input_subscripts0 = input_subscripts[0]
+    input_subscripts1 = input_subscripts[1]
     
-    input_subscript0_set = set(input_subscripts[0])
-    input_subscript1_set = set(input_subscripts[1])
+
+    # we remove from the convolution_subscript the convolution indices appearing
+    # in only one of the two tensors, because this is handled as a contraction, and
+	# additionally may be summed out if it is not an output 
+    
+    nontrivial_convolution_subscript_list = []
+    for c in convolution_subscript:  
+        if (c in input_subscripts0) and (c in input_subscripts1):
+            nontrivial_convolution_subscript_list += c
+    convolution_subscript = ''.join(nontrivial_convolution_subscript_list)
+
+
+    # If after removing nontrivial convolution indices there are no convolution indices, do the computation
+    # using Pytorch's contraction-only einsum
+    if len(convolution_subscript) == 0:
+        standard_einsum_str = input_subscripts0 + "," + input_subscripts1 + "->" + output_subscript
+        return torch.einsum(standard_einsum_str, operands[0], operands[1]) 
+ 
+
+    # We evaluate all indices which don't appear as outputs and appear in only one of the two tensors
+    input_subscript0_set = set(input_subscripts0)
+    input_subscript1_set = set(input_subscripts1)
     output_subscript_set = set(output_subscript)
 
-    #non_outputs_appear_once0 = list(input_subscript0_set - input_subscript1_set - output_subscript_set)
-    #non_outputs_appear_once1 = list(input_subscript1_set - input_subscript0_set - output_subscript_set)
+    non_outputs_appear_once0 = [e for e in input_subscripts0 if (e not in input_subscripts1 and e not in output_subscript)]
+    non_outputs_appear_once1 = [e for e in input_subscripts1 if (e not in input_subscripts0 and e not in output_subscript)]
+    
+    appear_once0_output_subscript = ''.join([e for e in input_subscripts0 if e not in non_outputs_appear_once0])
+    appear_once1_output_subscript = ''.join([e for e in input_subscripts1 if e not in non_outputs_appear_once1])
 
-    non_outputs_appear_once0 = [e for e in input_subscripts[0] if (e not in input_subscripts[1] and e not in output_subscript)]
-    non_outputs_appear_once1 = [e for e in input_subscripts[1] if (e not in input_subscripts[0] and e not in output_subscript)]
-    #print(non_outputs_appear_once0)
-    #print(non_outputs_appear_once1)
+    appear_once0_einsum_str = '->'.join([input_subscripts0, appear_once0_output_subscript])
+    appear_once1_einsum_str = '->'.join([input_subscripts1, appear_once1_output_subscript])
+
+  
+    if(len(non_outputs_appear_once0) > 0):
+        summed0_tensor = torch.einsum(appear_once0_einsum_str, operands[0])
+    else:
+        summed0_tensor = operands[0]
+    if(len(non_outputs_appear_once1) > 0):
+        summed1_tensor = torch.einsum(appear_once1_einsum_str, operands[1])
+    else:
+        summed1_tensor = operands[1] # \todo is this if else block actually saving any computation?
+
+    input_subscripts0 = appear_once0_output_subscript
+    input_subscripts1 = appear_once1_output_subscript
+
+    #print("summed_out inputs: " + str(input_subscripts0) + ", " + str(input_subscripts1))
+    
+    
+    # we compute the data necessary for permuting/reshaping the tensors into, and from for the output, atomic form 
+    input0_perm, input1_perm, out_perm, output_subscript_conv_appended, \
+    reshaped0_tensor_size, reshaped1_tensor_size, unreshaped_out_tensor_size \
+        = atomic_permutation(input_subscripts0, input_subscripts1, output_subscript, convolution_subscript, subscripts_set, summed0_tensor.size(), summed1_tensor.size()) 
+
+    #print("permuted input_subscripts0 = " + ''.join(elements(input_subscripts0, input0_perm)))
+    #print("permuted input_subscripts1 = " + ''.join(elements(input_subscripts1, input1_perm)))
+    #print("permuted output_subscript_conv_appended = " + ''.join(elements(output_subscript_conv_appended, out_perm)))
     
 
-    # \todo hopefully set maintains the order of first appearance, or has some convention, but may want to enforce one if not
-    appear_once0_output_subscript = ''.join([e for e in input_subscripts[0] if e not in non_outputs_appear_once0])
-    appear_once1_output_subscript = ''.join([e for e in input_subscripts[1] if e not in non_outputs_appear_once1])
+    # we do the permuting and reshaping, call our atomic operation, then reshape and permute the output
+   
+    #print("input0_perm = " + str(input0_perm))
+     
+    reshaped0_tensor = summed0_tensor.permute(input0_perm).reshape(reshaped0_tensor_size)
+    reshaped1_tensor = summed1_tensor.permute(input1_perm).reshape(reshaped1_tensor_size)
 
-    appear_once0_einsum_str = '->'.join([input_subscripts[0], appear_once0_output_subscript])
-    appear_once1_einsum_str = '->'.join([input_subscripts[1], appear_once1_output_subscript])
-
-    #print(appear_once0_einsum_str)
-    #print(appear_once1_einsum_str)
-
-    #print(operands[0])
-    #print(operands[1])
-    summed_out_tensor0 = torch.einsum(appear_once0_einsum_str, operands[0])
-    summed_out_tensor1 = torch.einsum(appear_once1_einsum_str, operands[1])
-
-    #print(summed_out_tensor0)
-    #print(summed_out_tensor1)
-
-    # derive the conv_einsum string corresponding to the convolution part of the computation
-
-    # \todo make sure this doesn't reorder things unnecessarily
-    conv_only_output_subscript = ''.join([e for e in appear_once0_output_subscript if e in appear_once1_output_subscript])
-    remaining_conv_only_subscript = ''.join([e for e in output_subscript if e not in conv_only_output_subscript])
-    conv_only_output_subscript = ''.join([conv_only_output_subscript, remaining_conv_only_subscript])
-
-    conv_only_einsum_str = ','.join([appear_once0_output_subscript, appear_once1_output_subscript])
-    conv_only_einsum_str = '->'.join([conv_only_einsum_str, conv_only_output_subscript]) 
-    conv_only_einsum_str = '|'.join([conv_only_einsum_str, convolution_subscript])
-
-    print("conv_only_einsum_str: " + conv_only_einsum_str)
+    num_conv = len(convolution_subscript)
     
-    # then compute the convolution-only part of the computation
-    convolved_tensor = conv_einsum_pair_convolution_only(conv_only_einsum_str, summed_out_tensor0, summed_out_tensor1)
+    #print("reshaped0_tensor.size() = " + str(reshaped0_tensor.size()))
+    unreshaped_out = convolution_atomic_operation(reshaped0_tensor, reshaped1_tensor, num_conv)
+
+    #print("unreshaped_out_tensor_size = " + str(unreshaped_out_tensor_size)) 
+    #print("unreshaped_out.size() = " + str(unreshaped_out.size()))
+    print("out_perm = " + str(out_perm))
+    # \todo I don't think I can simply call torch.squeeze because the 1 may actually be intended, 
+    #       This means unreshaped_out_tensor_size is actually computed incorrectly
+    return torch.squeeze(unreshaped_out.reshape(unreshaped_out_tensor_size)).permute(permutation_inverse(out_perm))
+    #return unreshaped_out.reshape(unreshaped_out_tensor_size).permute(permutation_inverse(out_perm))
+
     
-
-    # and derive a normal einsum string for summing out the remaining modes, which were effectively
-    # elementwise multiplied in the previous calculation 
-    contract_einsum_str = '->'.join([conv_only_output_subscript, output_subscript])
-    print("contract_einsum_str: " + contract_einsum_str)
-
-    #return torch.einsum(contract_einsum_str, convolved_tensor)
 
 #torch_A = torch.randn(3, 4, 5, device='cuda:0')   
 
@@ -986,9 +1142,73 @@ def conv_einsum_pair(*operands):
 #conv_einsum_pair_convolution_only("jki, kij->ijk | k", torch_A, torch_B)
 
 
-#torch_A = torch.randn(2,2,2,2)
-#torch_B = torch.randn(2,2)
+
+#torch_A = torch.ones(2,2,2,2)
+#torch_B = torch.ones(2,2)
 #conv_einsum_pair("ijkl,ik->il|ik", torch_A, torch_B)
 #print("\n\n\n")
 #conv_einsum_pair("lijk,ik->il|ik", torch_A, torch_B)
+
+#torch_A = torch.ones(2,2,2,2,2,2,2)
+#torch_B = torch.ones(2,2,2,2,2,2)
+#einsum_str = "abcdefh, dafgbh -> gfdaec | fdh"
+#print("einsum_str = " + einsum_str)
+#conv_einsum_pair(einsum_str, torch_A, torch_B)
+
+
+#torch_A = torch.ones(2,3,2)
+#torch_B = torch.ones(2,2,3,4)
+#einsum_str = "ijk, ijmh -> ihj | j"
+#print(einsum_str + " = \n" + str(conv_einsum_pair(einsum_str, torch_A, torch_B)))
+
+
+#torch_A = torch.ones(2,3)
+#torch_B = torch.ones(2,2,4)
+#einsum_str = "ij, ijh -> ihj | j"
+#print(einsum_str + " = \n" + str(conv_einsum_pair(einsum_str, torch_A, torch_B)))
+
+
+#torch_A = torch.randn(4,2)
+#torch_B = torch.randn(4,20)
+#einsum_str = "ij, ij -> ij | j"
+#print(einsum_str + " = \n" + str(conv_einsum_pair(einsum_str, torch_A, torch_B)))
+#print("ij_ij_to_ij_bar_j = \n" + str(ij_ij_to_ij_bar_j(torch_A, torch_B)))
+
+
+def conv_einsum(*operands):
+    input_subscripts, output_subscript, convolution_subscript, subscripts_set, operands \
+        = _parse_conv_einsum_input(operands)
+
+    # this simple pairwise reduction evaluates from left to right, and at each pair
+    # it sets the output to be those indices appearing in the final output, and it sets
+    # the convolution subscript to be those indices appearing in the total convolution subscript
+
+    out = operands[0] # I'm pretty sure out is a reference, and this = doesn't do a copy
+    left_input_subscript = input_subscripts[0]
+
+    for i in range(1, len(operands)):
+        right_input_subscript = input_subscripts[i]
+        pair_output_subscript = []
+        for s in output_subscript:
+            if s in left_input_subscript or s in right_input_subcscript:
+                pair_output_subscript.append(s)
+        pair_output_subscript = ''.join(pair_output_subscript)
+
+        pair_str = left_input_subscript + ", " + right_input_subscript + " -> " \
+                                        + pair_output_subscript + " | " + convolution_subscript
+        # I think it might be better to parse the pair convolution_subscript, and not
+        # pass the total convolution subscript, but this is convenient for now
+
+        left_input_subscript = pair_output_subscript
+
+        out = conv_einsum_pair(pair_str, out, operands[i])
+
+    return out
+
+torch_A = torch.ones(4)
+torch_B = torch_A
+torch_C = torch_A
+einsum_str = "i,i,i -> i | i"
+print(einsum_str + " = \n" + str(conv_einsum(einsum_str, torch_A, torch_B, torch_C)))
+
 
