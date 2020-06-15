@@ -1,4 +1,8 @@
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 import tnn 
+
 import torch
 
 X = 128
@@ -30,7 +34,7 @@ def CPForwardPass(U, K0, K1, K2):
 
 
 pass1 = CPForwardPass(U, K0, K1, K2)
-
+print("pass1.size() = " + str(pass1.size()))
 
 
 dLdV = torch.rand(H, W, T)

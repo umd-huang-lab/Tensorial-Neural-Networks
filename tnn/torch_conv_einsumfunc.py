@@ -1,8 +1,9 @@
 
 import torch
 
-from parse_conv_einsum import _parse_conv_einsum_input
-#from parse_conv_einsum import *
+from .parse_conv_einsum import _parse_conv_einsum_input
+#from parse_conv_einsum import _parse_conv_einsum_input
+
 
 
 
@@ -646,6 +647,12 @@ def ijklm_niklm_to_nijlm_bar_lm(kernel, input_tens):
     batch_size = input_tens.size(0)
     kernel_size = kernel.size()[3:5]
     input_size = input_tens.size()[3:5]
+    print("kernel_size = " + str(kernel_size))
+    print("input_size = " + str(input_size))
+    print("kernel.size() = " + str(kernel.size()))
+    print("input.size() = " + str(input_tens.size()))
+   
+
     max_h = max(kernel_size[0], input_size[0])
     max_w = max(kernel_size[1], input_size[1]) 
     groups = kernel.size(0)
@@ -663,11 +670,12 @@ def ijklm_niklm_to_nijlm_bar_lm(kernel, input_tens):
 
 
 #torch_A = torch.randn(5,4,2,3,18)
-#torch_B = torch.randn(6,5,2,3,12)
+#torch_B = torch.randn(6,5,2,3,20)
 #eins = ijklm_niklm_to_nijlm_bar_lm(torch_A, torch_B)
+#print("ijklm_niklm_to_nijlm_bar_lm size = \n" + str(eins.size()))
+
 #eins_forloop = ijklm_niklm_to_nijlm_bar_lm_forloop(torch_A, torch_B)
-##print("ijklm_niklm_to_nijlm_bar_lm_forloop = \n" + str(eins_forloop))
-##print("ijklm_niklm_to_nijlm_bar_lm = \n" + str(eins))
+#print("ijklm_niklm_to_nijlm_bar_lm_forloop = \n" + str(eins_forloop))
 #print("eins - eins_forloop = \n" + str(eins - eins_forloop))
 
 
@@ -999,20 +1007,14 @@ def atomic_permutation(input_subscripts0, input_subscripts1, output_subscript, c
     convolution1to0_perm = [convolution0_perm_inverse[convolution1_perm[i]] for i in range(0, len(convolution1_perm))]
     print("convolution1to0_perm = " + str(convolution1to0_perm))
 
-    conv0_type_offset = sum(elements(type_sizes, input0_types)[0:3])
-    conv1_type_offset = sum(elements(type_sizes, input1_types)[0:3])
-    print("conv0_type_offset = " + str(conv0_type_offset))
-    print("conv1_type_offset = " + str(conv1_type_offset))
-    convolution_out_total_dim = 1
-    #for i in range(0, len(convolution0_positions)):
-    #    convolution_out_total_dim *= max(input0_tensor_size[conv0_type_offset+convolution0_perm[i]], \
-    #                                     input1_tensor_size[conv1_type_offset+convolution1_perm[i]]) 
-    
+
+    convolution_out_total_dim = 1     
+    convolution_out_size = []
     for i in range(0, len(convolution0_positions)):
         conv0_sz_i = input0_tensor_size[convolution0_positions[convolution0_perm[i]]]
-        conv1_sz_i = input1_tensor_size[convolution1_positions[convolution1_perm[i]]]
-        convolution_out_total_dim *= max(conv0_sz_i, conv0_sz_i)
-    print("convolution_out_total_dim = " + str(convolution_out_total_dim))
+        conv1_sz_i = input1_tensor_size[convolution1_positions[convolution1_perm[i]]] 
+        convolution_out_size.append(max(conv0_sz_i, conv1_sz_i))
+    
 
     print("\n")
     print("convolution0_positions: " + str(convolution0_positions))
@@ -1021,18 +1023,19 @@ def atomic_permutation(input_subscripts0, input_subscripts1, output_subscript, c
     print("convolution1_perm: " + str(convolution1_perm))
     print("\n")
 
-    convolution0_total_dim = 1
-    for pos in convolution0_positions:
-        convolution0_total_dim *= input0_tensor_size[pos]
+    
+    convolution0_size =[]
+    for pos in convolution0_positions:     
+        convolution0_size.append(input0_tensor_size[pos])
+   
+    convolution1_size =[]
+    for pos in convolution1_positions:     
+        convolution1_size.append(input1_tensor_size[pos])
+ 
 
-    convolution1_total_dim = 1
-    for pos in convolution1_positions:
-        convolution1_total_dim *= input1_tensor_size[pos]
-
-
-    reshaped0_tensor_size = [group_total_dim, batch0_total_dim, contraction_total_dim, convolution0_total_dim]
-    reshaped1_tensor_size = [batch1_total_dim, group_total_dim, contraction_total_dim, convolution1_total_dim]
-    unreshaped_out_tensor_size = [batch1_total_dim, group_total_dim, batch0_total_dim, convolution_out_total_dim]  
+    reshaped0_tensor_size = [group_total_dim, batch0_total_dim, contraction_total_dim] + convolution0_size
+    reshaped1_tensor_size = [batch1_total_dim, group_total_dim, contraction_total_dim] + convolution1_size
+    unreshaped_out_tensor_size = [batch1_total_dim, group_total_dim, batch0_total_dim] + convolution_out_size  
 
 
     
@@ -1113,6 +1116,11 @@ def conv_einsum_pair(*operands):
     reshaped0_tensor = summed0_tensor.permute(input0_perm).reshape(reshaped0_tensor_size)
     reshaped1_tensor = summed1_tensor.permute(input1_perm).reshape(reshaped1_tensor_size)
 
+    print("reshaped0_tensor_size = " + str(reshaped0_tensor_size))
+    print("reshaped1_tensor_size = " + str(reshaped1_tensor_size))
+    print("reshaped0_tensor.size() = " + str(reshaped0_tensor.size()))
+    print("reshaped1_tensor.size() = " + str(reshaped1_tensor.size()))
+
     num_conv = len(convolution_subscript)
     
     #print("reshaped0_tensor.size() = " + str(reshaped0_tensor.size()))
@@ -1190,7 +1198,7 @@ def conv_einsum(*operands):
         right_input_subscript = input_subscripts[i]
         pair_output_subscript = []
         for s in output_subscript:
-            if s in left_input_subscript or s in right_input_subcscript:
+            if s in left_input_subscript or s in right_input_subscript:
                 pair_output_subscript.append(s)
         pair_output_subscript = ''.join(pair_output_subscript)
 
@@ -1205,10 +1213,16 @@ def conv_einsum(*operands):
 
     return out
 
-torch_A = torch.ones(4)
-torch_B = torch_A
-torch_C = torch_A
-einsum_str = "i,i,i -> i | i"
-print(einsum_str + " = \n" + str(conv_einsum(einsum_str, torch_A, torch_B, torch_C)))
+#torch_A = torch.ones(4)
+#torch_B = torch_A
+#torch_C = torch_A
+#einsum_str = "i,i,i -> i | i"
+#print(einsum_str + " = \n" + str(conv_einsum(einsum_str, torch_A, torch_B, torch_C)))
 
+
+#torch_A = torch.ones(4)
+#torch_B = torch.ones(4,5)
+#torch_C = torch.ones(4,5,6)
+#einsum_str = "i,ij,ijk -> ij | ij"
+#print(einsum_str + " = \n" + str(conv_einsum(einsum_str, torch_A, torch_B, torch_C)))
 
