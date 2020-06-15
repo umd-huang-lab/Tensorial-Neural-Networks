@@ -15,13 +15,13 @@ H = 1024
 W = 1024
 
 
-U = torch.rand(X, Y, S)
+U = torch.rand(X, Y, S, device='cuda')
 
-K = torch.rand(H, W, S, T)
+K = torch.rand(H, W, S, T, device='cuda')
 # obtained by cp decomp
-K0 = torch.rand(S, R)
-K1 = torch.rand(H, W, R)
-K2 = torch.rand(R, T)
+K0 = torch.rand(S, R, device='cuda')
+K1 = torch.rand(H, W, R, device='cuda')
+K2 = torch.rand(R, T, device='cuda')
 
 
 # from paper
@@ -37,7 +37,7 @@ pass1 = CPForwardPass(U, K0, K1, K2)
 print("pass1.size() = " + str(pass1.size()))
 
 
-dLdV = torch.rand(H, W, T)
+dLdV = torch.rand(H, W, T, device='cuda')
 #dLdK1 = torch.rand(H, W, R)
 #dLdK2 = torch.rand(R, T)
 #dLdU0 = torch.rand(X, Y, R)
