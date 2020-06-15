@@ -6,8 +6,6 @@ from .parse_conv_einsum import _parse_conv_einsum_input
 
 
 
-
-
 ##torch.nn.Conv1d
 #batch_size = 1
 #signal_length = 8
@@ -883,9 +881,6 @@ def atomic_permutation(input_subscripts0, input_subscripts1, output_subscript, c
 
     # this can surely be optimized, it is probably not a bottleneck though
     # \todo there may be a cleaner way to organize this code, also I tacked on input0_tensor_size and input1_tensor_size and the computation those are used for
-    
-    print("input_subscripts0 = " + input_subscripts0) 
-    print("input_subscripts1 = " + input_subscripts1) 
 
     input_subscripts0_set = set(input_subscripts0)
     input_subscripts1_set = set(input_subscripts1)
@@ -998,31 +993,15 @@ def atomic_permutation(input_subscripts0, input_subscripts1, output_subscript, c
         contraction_total_dim *= input0_tensor_size[pos]
 
 
-    
-    # \todo convolution_out_total_dim is computed incorrectly
-    print("convolution0_perm = " + str(convolution0_perm))
-    print("convolution1_perm = " + str(convolution1_perm))
-
     convolution0_perm_inverse = permutation_inverse(convolution0_perm) 
     convolution1to0_perm = [convolution0_perm_inverse[convolution1_perm[i]] for i in range(0, len(convolution1_perm))]
-    print("convolution1to0_perm = " + str(convolution1to0_perm))
 
 
-    convolution_out_total_dim = 1     
     convolution_out_size = []
     for i in range(0, len(convolution0_positions)):
         conv0_sz_i = input0_tensor_size[convolution0_positions[convolution0_perm[i]]]
         conv1_sz_i = input1_tensor_size[convolution1_positions[convolution1_perm[i]]] 
         convolution_out_size.append(max(conv0_sz_i, conv1_sz_i))
-    
-
-    print("\n")
-    print("convolution0_positions: " + str(convolution0_positions))
-    print("convolution1_positions: " + str(convolution1_positions))
-    print("convolution0_perm: " + str(convolution0_perm))
-    print("convolution1_perm: " + str(convolution1_perm))
-    print("\n")
-
     
     convolution0_size =[]
     for pos in convolution0_positions:     
@@ -1036,8 +1015,6 @@ def atomic_permutation(input_subscripts0, input_subscripts1, output_subscript, c
     reshaped0_tensor_size = [group_total_dim, batch0_total_dim, contraction_total_dim] + convolution0_size
     reshaped1_tensor_size = [batch1_total_dim, group_total_dim, contraction_total_dim] + convolution1_size
     unreshaped_out_tensor_size = [batch1_total_dim, group_total_dim, batch0_total_dim] + convolution_out_size  
-
-
     
     return input0_perm, input1_perm, out_perm, output_subscript_conv_appended, reshaped0_tensor_size, reshaped1_tensor_size, unreshaped_out_tensor_size
 
@@ -1096,39 +1073,24 @@ def conv_einsum_pair(*operands):
     input_subscripts0 = appear_once0_output_subscript
     input_subscripts1 = appear_once1_output_subscript
 
-    #print("summed_out inputs: " + str(input_subscripts0) + ", " + str(input_subscripts1))
-    
-    
+   
     # we compute the data necessary for permuting/reshaping the tensors into, and from for the output, atomic form 
     input0_perm, input1_perm, out_perm, output_subscript_conv_appended, \
     reshaped0_tensor_size, reshaped1_tensor_size, unreshaped_out_tensor_size \
         = atomic_permutation(input_subscripts0, input_subscripts1, output_subscript, convolution_subscript, subscripts_set, summed0_tensor.size(), summed1_tensor.size()) 
 
-    #print("permuted input_subscripts0 = " + ''.join(elements(input_subscripts0, input0_perm)))
-    #print("permuted input_subscripts1 = " + ''.join(elements(input_subscripts1, input1_perm)))
-    #print("permuted output_subscript_conv_appended = " + ''.join(elements(output_subscript_conv_appended, out_perm)))
-    
 
     # we do the permuting and reshaping, call our atomic operation, then reshape and permute the output
-   
-    #print("input0_perm = " + str(input0_perm))
      
     reshaped0_tensor = summed0_tensor.permute(input0_perm).reshape(reshaped0_tensor_size)
     reshaped1_tensor = summed1_tensor.permute(input1_perm).reshape(reshaped1_tensor_size)
 
-    print("reshaped0_tensor_size = " + str(reshaped0_tensor_size))
-    print("reshaped1_tensor_size = " + str(reshaped1_tensor_size))
-    print("reshaped0_tensor.size() = " + str(reshaped0_tensor.size()))
-    print("reshaped1_tensor.size() = " + str(reshaped1_tensor.size()))
 
     num_conv = len(convolution_subscript)
     
-    #print("reshaped0_tensor.size() = " + str(reshaped0_tensor.size()))
+
     unreshaped_out = convolution_atomic_operation(reshaped0_tensor, reshaped1_tensor, num_conv)
 
-    #print("unreshaped_out_tensor_size = " + str(unreshaped_out_tensor_size)) 
-    #print("unreshaped_out.size() = " + str(unreshaped_out.size()))
-    print("out_perm = " + str(out_perm))
     # \todo I don't think I can simply call torch.squeeze because the 1 may actually be intended, 
     #       This means unreshaped_out_tensor_size is actually computed incorrectly
     return torch.squeeze(unreshaped_out.reshape(unreshaped_out_tensor_size)).permute(permutation_inverse(out_perm))
