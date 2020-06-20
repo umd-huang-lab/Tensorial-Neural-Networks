@@ -301,9 +301,6 @@ def ijk_ik_to_ijk_bar_k(tens1, tens2):
 
 
 def ijkl_ikl_to_ijl_bar_l(tens1, tens2):
-    # this is supposed to compute the most general, up to reshaping / permuting, convolutional einsum 
-    # with 1 convolution index which is computable by Conv1d alone
-
     kernel_size = tens1.size(3)
     input_size = tens2.size(2)
     conv_len = max(kernel_size, input_size)
@@ -408,7 +405,11 @@ def ijkl_mikl_to_mijl_bar_l_forloop(tens1, tens2):
 #print("'ijkl, i1kl -> ij1l | l' = \n" + str(ijkl_ikl_to_ijl_bar_l(torch_A, torch_B[:,1,:,:].reshape(torch_A.size(0), torch_A.size(2), torch_A.size(3)))))
 
 
-
+# \todo it's actually easier to read if I change this to
+#       mikl_ijkl_to_mijl_bar_l
+#       which is the same as
+#       ijkl_jmkl_to_ijml_bar_l # is this right?
+#       because then the batch indices appear in the right order
 def ijkl_mikl_to_mijl_bar_l(kernel, input_tens):
     # this is supposed to compute the most general, up to reshaping / permuting, convolutional einsum 
     # with 1 convolution index which is computable by Conv1d alone
@@ -1041,7 +1042,7 @@ def conv_einsum_pair(*operands):
 
     # If after removing nontrivial convolution indices there are no convolution indices, do the computation
     # using Pytorch's contraction-only einsum
-    if len(convolution_subscript) == 0:
+    if len(convolution_subscript) == 0: 
         standard_einsum_str = input_subscripts0 + "," + input_subscripts1 + "->" + output_subscript
         return torch.einsum(standard_einsum_str, operands[0], operands[1]) 
  
@@ -1079,22 +1080,36 @@ def conv_einsum_pair(*operands):
     reshaped0_tensor_size, reshaped1_tensor_size, unreshaped_out_tensor_size \
         = atomic_permutation(input_subscripts0, input_subscripts1, output_subscript, convolution_subscript, subscripts_set, summed0_tensor.size(), summed1_tensor.size()) 
 
+    #print("reshaped0_tensor_size: " + str(reshaped0_tensor_size))
+    #print("reshaped1_tensor_size: " + str(reshaped1_tensor_size))
 
     # we do the permuting and reshaping, call our atomic operation, then reshape and permute the output
      
     reshaped0_tensor = summed0_tensor.permute(input0_perm).reshape(reshaped0_tensor_size)
     reshaped1_tensor = summed1_tensor.permute(input1_perm).reshape(reshaped1_tensor_size)
-
+    
 
     num_conv = len(convolution_subscript)
     
 
     unreshaped_out = convolution_atomic_operation(reshaped0_tensor, reshaped1_tensor, num_conv)
 
+    #print("unreshaped_out.size() = " + str(unreshaped_out.size()) + "\n")
+    #print("unreshaped_out_tensor_size = " + str(unreshaped_out_tensor_size) + "\n")
+
+
     # \todo I don't think I can simply call torch.squeeze because the 1 may actually be intended, 
     #       This means unreshaped_out_tensor_size is actually computed incorrectly
-    return torch.squeeze(unreshaped_out.reshape(unreshaped_out_tensor_size)).permute(permutation_inverse(out_perm))
-    #return unreshaped_out.reshape(unreshaped_out_tensor_size).permute(permutation_inverse(out_perm))
+    reshaped_out = torch.squeeze(unreshaped_out.reshape(unreshaped_out_tensor_size)).permute(permutation_inverse(out_perm))
+
+    # lastly, we must contract out any convolution indices not appearing in the output
+    # \todo I think the atomic call to ConvXd can actually do this step, which would probably be faster
+    #print("reshaped_out.size() = " + str(reshaped_out.size()) + "\n")
+    #print("output_subsript = " + output_subscript + "\n") 
+    #print("output_subscript_conv_appended = " + output_subscript_conv_appended + "\n")
+    
+    contract_convolutions_str = output_subscript_conv_appended + "->" + output_subscript
+    return torch.einsum(contract_convolutions_str, reshaped_out)
 
     
 
@@ -1144,33 +1159,55 @@ def conv_einsum_pair(*operands):
 #print(einsum_str + " = \n" + str(conv_einsum_pair(einsum_str, torch_A, torch_B)))
 #print("ij_ij_to_ij_bar_j = \n" + str(ij_ij_to_ij_bar_j(torch_A, torch_B)))
 
+from collections import OrderedDict
+def without_duplicates(iterable):
+    # this is order preserving
+    return list(OrderedDict.fromkeys(iterable))
 
-def conv_einsum(*operands):
+def conv_einsum(*variadic_operands):
     input_subscripts, output_subscript, convolution_subscript, subscripts_set, operands \
-        = _parse_conv_einsum_input(operands)
+        = _parse_conv_einsum_input(variadic_operands)
+
+    
+    if(len(convolution_subscript) == 0):
+        #return torch.einsum(','.join(input_subscripts) + "->" + output_subscript, operands)
+        return torch.einsum(*variadic_operands)
+
 
     # this simple pairwise reduction evaluates from left to right, and at each pair
-    # it sets the output to be those indices appearing in the final output, and it sets
+    # it sets the output to be those indices in the two pair inputs which remain in 
+    # any input to the right, or in the final output, and it sets
     # the convolution subscript to be those indices appearing in the total convolution subscript
-
+    
     out = operands[0] # I'm pretty sure out is a reference, and this = doesn't do a copy
-    left_input_subscript = input_subscripts[0]
+    left_subscript = input_subscripts[0]
+    remaining_input_subscripts = input_subscripts.copy()
+    remaining_input_subscripts.pop(0)
 
-    for i in range(1, len(operands)):
-        right_input_subscript = input_subscripts[i]
+    for i in range(1, len(input_subscripts)):
+        right_subscript = input_subscripts[i]
+        remaining_input_subscripts.pop(0)
+        remaining_input_subscript_indices = set().union(*remaining_input_subscripts)
+        
+
         pair_output_subscript = []
         for s in output_subscript:
-            if s in left_input_subscript or s in right_input_subscript:
+            if s in left_subscript or s in right_subscript:
                 pair_output_subscript.append(s)
+
+        left_right_without_duplicates = without_duplicates(left_subscript + right_subscript)
+        
+        for s in left_right_without_duplicates: 
+            if s in remaining_input_subscript_indices and s not in pair_output_subscript: 
+                pair_output_subscript.append(s)
+        
         pair_output_subscript = ''.join(pair_output_subscript)
 
-        pair_str = left_input_subscript + ", " + right_input_subscript + " -> " \
+        pair_str = left_subscript + ", " + right_subscript + " -> " \
                                         + pair_output_subscript + " | " + convolution_subscript
         # I think it might be better to parse the pair convolution_subscript, and not
         # pass the total convolution subscript, but this is convenient for now
-
-        left_input_subscript = pair_output_subscript
-
+        left_subscript = pair_output_subscript
         out = conv_einsum_pair(pair_str, out, operands[i])
 
     return out
