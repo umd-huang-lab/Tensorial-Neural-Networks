@@ -37,35 +37,64 @@ import time
 #
 
 
-def i_j_k_to_ij_i_disjoint(A, B, C):
-    X = torch.einsum("i,j,k->ij", A, B, C)
-    Y = torch.einsum("i,j,k->i", A, B, C)
+#def i_j_k_to_ij_i_disjoint(A, B, C):
+#    X = torch.einsum("i,j,k->ij", A, B, C)
+#    Y = torch.einsum("i,j,k->i", A, B, C)
+#
+#    return [X, Y]
+#
+#def i_j_k_to_ij_i_reuse(A, B, C):
+#    X = torch.einsum("i,j,k->ij", A, B, C)
+#    Y = torch.einsum("ij->i", X)
+#
+#    return [X, Y]
+#
+#def i_j_k_to_ij_i_intermediate(A, B, C):
+#    INT = torch.einsum("i,j->ij", A, B)
+#    X = torch.einsum("ij,k->ij", INT, C)
+#    Y = torch.einsum("ij,k->i", INT, C)
+#
+#    return [X, Y]
+#
+#
+#I = 10000
+#J = 10000
+#K = 1000
+#
+#A = torch.ones(I, device='cpu')
+#B = torch.ones(J, device='cpu')
+#C = torch.ones(K, device='cpu')
+#
+#start = time.time()
+#
+#out_disjoint = i_j_k_to_ij_i_disjoint(A, B, C)
+#out_reuse = i_j_k_to_ij_i_reuse(A, B, C)
+#out_intermediate = i_j_k_to_ij_i_intermediate(A, B, C)
+#
+#finish = time.time()
+#
 
-def i_j_k_to_ij_i_reuse(A, B, C):
-    X = torch.einsum("i,j,k->ij", A, B, C)
-    Y = torch.einsum("ij->i", X)
 
-def i_j_k_to_ij_i_intermediate(A, B, C):
-    INT = torch.einsum("i,j->ij", A, B)
-    X = torch.einsum("ij,k->ij", INT, C)
-    Y = torch.einsum("ij,k->i", INT, C)
+
+
 
 
 I = 10000
 J = 10000
 K = 1000
 
-A = torch.rand(I, device='cpu')
-B = torch.rand(J, device='cpu')
-C = torch.rand(K, device='cpu')
+A = torch.rand(I)
+B = torch.rand(J)
+C = torch.rand(K)
 
 start = time.time()
 
-#out_disjoint = i_j_k_to_ij_i_disjoint(A, B, C)
-#out_reuse = i_j_k_to_ij_i_reuse(A, B, C)
-out_intermediate = i_j_k_to_ij_i_intermediate(A, B, C)
+out_ij = torch.einsum("i,j,k->ij", A, B, C)
+out_i = torch.einsum("i,j,k->i", A, B, C)
 
 finish = time.time()
+
+
 
 
 #I = 1000000
