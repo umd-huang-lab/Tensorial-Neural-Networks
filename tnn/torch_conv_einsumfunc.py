@@ -464,13 +464,13 @@ def ijkl_mikl_to_mijl_bar_l(kernel, input_tens, padding_mode='max_linear', paddi
     
 
 
-#torch_A = torch.ones(1,1,1,10)
-#torch_B = torch.ones(1, torch_A.size(0), torch_A.size(2), 10)
-#print("torch_A.size() = " + str(torch_A.size()))
-#print("torch_B.size() = " + str(torch_B.size()))
-#eins = ijkl_mikl_to_mijl_bar_l(torch_A, torch_B, stride=5)
-#print("eins = \n" + str(eins))
-#print("eins.size() = " + str(eins.size()))
+torch_A = torch.ones(1,1,1,10)
+torch_B = torch.ones(1, torch_A.size(0), torch_A.size(2), 200)
+print("torch_A.size() = " + str(torch_A.size()))
+print("torch_B.size() = " + str(torch_B.size()))
+eins = ijkl_mikl_to_mijl_bar_l(torch_A, torch_B, dilation=5, padding=0, padding_mode='zeros')
+print("eins = \n" + str(eins))
+print("eins.size() = " + str(eins.size()))
 #eins_forloop = ijkl_mikl_to_mijl_bar_l_forloop(torch_A, torch_B)
 #print("'ijkl, imkl -> imjl | l' = \n" + str(eins.size()))
 #print("'ijkl, imkl -> imjl | l' = \n" + str(eins))
@@ -1376,12 +1376,12 @@ def conv_einsum(*variadic_operands, padding_mode='max_linear', padding=0, stride
 #einsum_str = "i,i,i -> i | i"
 #print(einsum_str + " = \n" + str(conv_einsum(einsum_str, torch_A, torch_B, torch_C)))
 
-torch_A = torch.ones(20)
-torch_B = torch.ones(20)
-einsum_str = "i, i -> i | i"
-out = conv_einsum(einsum_str, torch_A, torch_B)
-print(out)
-print(out.size())
+#torch_A = torch.ones(20)
+#torch_B = torch.ones(20)
+#einsum_str = "i, i -> i | i"
+#out = conv_einsum(einsum_str, torch_A, torch_B, dilation=1)
+#print(out)
+#print(out.size())
 
 
 #op12.size() = torch.Size([4, 3, 224, 224])
@@ -1424,12 +1424,6 @@ print(out.size())
 #torch_C = torch.ones(4,5,6)
 #einsum_str = "i,ij,ijk -> ij | ij"
 #print(einsum_str + " = \n" + str(conv_einsum(einsum_str, torch_A, torch_B, torch_C)))
-
-
-
-
-
-
 
 
 
