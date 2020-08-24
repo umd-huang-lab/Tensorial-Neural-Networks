@@ -122,8 +122,6 @@ def ijklm_niklm_to_nijlm_bar_lm(kernel, input_tens, padding_mode='max_linear', p
 
 
 
-
-
 def ijklmn_oiklmn_to_oijlmn_bar_lmn(kernel, input_tens, padding_mode='max_linear', padding=0, stride=1, dilation=1, bias=False):
     # i.e "ijklmn, oiklmn -> oijlmn | lmn"
     # This is supposed to compute the most general, up to reshaping / permuting, convolutional einsum 
@@ -582,39 +580,74 @@ def without_duplicates(iterable):
     return list(OrderedDict.fromkeys(iterable))
 
 
+###
 # \todo I don't think it returns the correct sizes if padding_mode == max_linear and dilation != 1
 # \todo in what order does the stride tuple get mapped to the convolution indices?
 # \todo write documentation for using this
 # \todo Should add more warnings / usage errors for the user
+#
+# This function (as opposed to conv_einsum_pair) needs to be responsible for handling 
+# padding_mode='max_linear' and padding_mode='max_circular', because
+# those conditions put requirements on N-ary operations (as opposed to binary)
+###
 def conv_einsum(*variadic_operands, padding_mode='max_linear', padding=0, stride=1, dilation=1, bias=False):
 
     input_subscripts, output_subscript, convolution_subscript, subscripts_set, operands \
         = _parse_conv_einsum_input(variadic_operands) 
 
-  
-    if(len(convolution_subscript) == 0):
-        #return torch.einsum(','.join(input_subscripts) + "->" + output_subscript, operands)
-        return torch.einsum(*variadic_operands)
 
+    #### 
+    # Error handling and warnings
+    # \todo add more of these
+    ###
 
     if(len(input_subscripts) > 2):
         if not (padding_mode == 'max_linear' or padding_mode == 'max_circular'):
-            print("padding mode must be max_linear or max_circular if input size is > 2")
+            print("Warning: padding mode must be max_linear or max_circular if input size is > 2")
 
         # might remove this warning since it should be in the documentation and since they are ignored
         # it is technically not an error to pass anything
         if dilation != 1 or stride != 1 or padding != 0:
-            print("dilation, stride, and padding are ignored if input size is > 2")
-    else:
-        # \todo There are more cases than just binary where hyperparameters make sense
-        left_subscript = input_subscripts[0]
-        right_subscript = input_subscripts[1]
-        
-        pair_str = left_subscript + ", " + right_subscript + " -> " \
+            print("Warning: dilation, stride, and padding are ignored if input size is > 2")
+
+
+    ###
+    # No-convolution cases
+    # In these cases we should resort to torch.einsum so that our tool has approximately equivalent
+    # performance with einsum in all applicable cases
+    ###
+    if(len(convolution_subscript) == 0):        
+        return torch.einsum(*variadic_operands)
+    if(len(input_subscripts) <= 1):
+        # 1-way convolution is a contraction operation, so convert the einsum string to one without convolution
+        return torch.einsum(','.join(input_subscripts) + "->" + output_subscript, operands)
+
+    ###
+    # Binary case
+    ###
+    if(len(input_subscripts) == 2): 
+
+        pair_str = input_subscripts[0] + ", " + input_subscripts[1] + " -> " \
                                          + output_subscript + " | " + convolution_subscript
         
         return conv_einsum_pair(pair_str, operands[0], operands[1], \
                                 padding_mode=padding_mode, padding=padding, stride=stride, dilation=dilation, bias=bias)
+
+
+    ###
+    # N-ary case, N > 2
+    ###
+
+    # \todo Note that, because in the 2-ary did we decided on the convention that the first input represents the "input" or
+    #       "image" tensor and the second represents the "kernel" tensor, we were able to implement the hyperparameters "dilation",
+    #       "bias", and "padding" (arbitrary padding). Because in the N-ary case there's apparently not a useful convention for enforcing
+    #       these, "dilation", "bias", and arbitrary designations of paddings are not supported. 
+    #       It's likely that "stride" is applicable to the N-ary case, however. Additionally, there may be special cases of conv_einsums
+    #       for N > 2 for which arbitrary paddings, or bias, or dilation do apply. 
+    
+   
+    # We handle the options "max_linear" and "max_circular" here, because they aren't naturally handled within conv_einsum_pair,
+    # as they are a condition on an N-ary operation.
 
     # this simple pairwise reduction evaluates from left to right, and at each pair
     # it sets the output to be those indices in the two pair inputs which remain in 
@@ -661,7 +694,7 @@ def conv_einsum(*variadic_operands, padding_mode='max_linear', padding=0, stride
 #print("torch_B.size() = " + str(torch_B.size()))
 #einsum_str = "ifjkl,ik->lif|ik"
 #print("einsum_str = " + einsum_str)
-#out = conv_einsum(einsum_str, torch_A, torch_B, stride=(1,1))
+#out = conv_einsum(einsum_str, torch_A, torch_B, stride={"i":1, "k":1})
 #print(out)
 #print(out.size())
 
@@ -676,22 +709,22 @@ def conv_einsum(*variadic_operands, padding_mode='max_linear', padding=0, stride
 #torch_B = torch.ones(I, J, L, M, N)
 #einsum_str = "ijlmn, ijlmn -> lmn | lmn"
 #print(einsum_str)
-##print(str(conv_einsum(einsum_str, torch_A, torch_B, padding_mode='zeros', padding=(6,6,3), stride=(2,2,2))))
-#print(str(conv_einsum(einsum_str, torch_A, torch_B, stride=(2,2,2))))
+##print(str(conv_einsum(einsum_str, torch_A, torch_B, padding_mode='zeros', padding={"l":1, "m":1, "n":1}, {"l":1, "m":1, "n":1})))
+#print(str(conv_einsum(einsum_str, torch_A, torch_B, {"l":2, "m":1, "n":1})))
 
-#torch_A = torch.ones(4)
-#torch_B = torch_A
-#torch_C = torch_A
-#einsum_str = "i,i,i -> i | i"
-#print(einsum_str + " = \n" + str(conv_einsum(einsum_str, torch_A, torch_B, torch_C)))
+torch_A = torch.ones(4)
+torch_B = torch.ones(5)
+torch_C = torch.ones(6)
+einsum_str = "i,i,i -> i | i"
+print(einsum_str + " = \n" + str(conv_einsum(einsum_str, torch_A, torch_B, torch_C, padding_mode='max_linear')))
 
 #torch_A = torch.ones(20)
-#torch_B = torch.ones(20)
+#torch_B = torch.ones(10)
 #einsum_str = "i, i -> i | i"
-#out = conv_einsum(einsum_str, torch_A, torch_B, dilation=1)
+#out = conv_einsum(einsum_str, torch_A, torch_B, padding=0, padding_mode='zeros')
 #print(out)
 #print(out.size())
-
+#
 
 #op12.size() = torch.Size([4, 3, 224, 224])
 #self.layer_nodes['core'].size() = torch.Size([7, 3, 7, 7])
