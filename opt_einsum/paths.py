@@ -497,7 +497,7 @@ class BranchBound(PathOptimizer):
         return self.path
 
 
-def branch(inputs, output, size_dict, memory_limit=None, conv_subscripts="",**optimizer_kwargs):
+def branch(inputs, output, size_dict, memory_limit=None, conv_subscripts="",intprods={},**optimizer_kwargs):
     optimizer = BranchBound(**optimizer_kwargs)
     return optimizer(inputs, output, size_dict, memory_limit, conv_subscripts)
 

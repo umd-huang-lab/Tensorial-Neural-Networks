@@ -291,6 +291,7 @@ def contract_path(*operands, **kwargs):
     naive_cost = helpers.flop_count(indices, inner_product, num_ops, size_dict, conv_subscripts,intprods,"",input_sets,output_set)
     
     # Compute the path
+    """
     if not isinstance(path_type, (str, paths.PathOptimizer)):
         # Custom path supplied
         path = path_type
@@ -299,11 +300,13 @@ def contract_path(*operands, **kwargs):
         path = [tuple(range(num_ops))]
     elif isinstance(path_type, paths.PathOptimizer):
         # Custom path optimizer supplied
-        path = path_type(input_sets, output_set, size_dict, memory_arg, conv_subscripts, intprods)
+        #path = path_type(input_sets, output_set, size_dict, memory_arg, conv_subscripts, intprods)
     else:
         path_optimizer = paths.get_path_fn(path_type)
      
         path = path_optimizer(input_sets, output_set, size_dict, memory_arg, conv_subscripts, intprods)
+    """
+    path=paths.optimal(input_sets, output_set, size_dict, memory_arg, conv_subscripts, intprods)
 
     cost_list = []
     scale_list = []
