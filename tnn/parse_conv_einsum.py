@@ -187,8 +187,8 @@ def _parse_conv_einsum_input(operands):
         raise ValueError("Number of einsum subscripts must be equal to the "
                          "number of operands.")
 
-    subscripts_set = input_subscripts.replace(",", "")
-    subscripts_set = "".join(set(subscripts_set))
+    indices_set = input_subscripts.replace(",", "")
+    indices_set = "".join(set(indices_set))
     return (input_subscripts.split(","), output_subscript, convolution_subscript, \
-            subscripts_set, operands)
+            indices_set, operands)
 
