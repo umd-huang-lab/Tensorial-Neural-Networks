@@ -1,14 +1,4 @@
 
-import torch
-import torch.utils.dlpack
-
-import sys
-import os
-# \todo need to figure out where to put the lib/tnn.so binary so that it adheres to
-#       usual import semantics
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
-import tnnlib
-
 einsum_symbols = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 einsum_symbols_set = set(einsum_symbols)
 
@@ -197,22 +187,8 @@ def _parse_conv_einsum_input(operands):
         raise ValueError("Number of einsum subscripts must be equal to the "
                          "number of operands.")
 
-    subscripts_set = input_subscripts.replace(",", "")
-    subscripts_set = "".join(set(subscripts_set))
+    indices_set = input_subscripts.replace(",", "")
+    indices_set = "".join(set(indices_set))
     return (input_subscripts.split(","), output_subscript, convolution_subscript, \
-            subscripts_set, operands)
-
-# expects pytorch tensors for now
-def conv_einsum(*operands):
-    input_subscripts, output_subscript, convolution_subscript, subscripts_set, operands \
-        = _parse_conv_einsum_input(operands)
-
-    dlpack_operands = [] 
-    for operand in operands:
-        dlpack_operands.append(torch.utils.dlpack.to_dlpack(operand))
-
-
-    tnnlib.conv_einsum(input_subscripts, output_subscript, convolution_subscript, \
-                       subscripts_set, dlpack_operands)
-
+            indices_set, operands)
 
