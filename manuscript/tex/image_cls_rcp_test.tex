@@ -1,0 +1,130 @@
+% This file was created by tikzplotlib v0.9.8.
+\begin{tikzpicture}
+
+\definecolor{color0}{rgb}{0.886274509803922,0.290196078431373,0.2}
+\definecolor{color1}{rgb}{0.203921568627451,0.541176470588235,0.741176470588235}
+\definecolor{color2}{rgb}{0.596078431372549,0.556862745098039,0.835294117647059}
+
+\begin{axis}[
+axis line style={white},
+legend cell align={left},
+legend style={
+  fill opacity=0.8,
+  draw opacity=1,
+  text opacity=1,
+  at={(0.03,0.97)},
+  anchor=north west,
+  draw=white!80!black
+},
+tick align=outside,
+x grid style={white},
+xlabel={compression rate},
+xmajorticks=true,
+xtick style={draw=none},
+xmin=0.7, xmax=7.3,
+xtick style={color=white!33.3333333333333!black},
+xtick={0,1,2,3,4,5,6,7,8},
+xticklabels={,1\%,2\%,5\%,10\%,20\%,50\%,100\%,},
+y grid style={white!93.3333333333333!black},
+ylabel={seconds per epoch},
+ymajorgrids,
+ymajorticks=true,
+ytick style={draw=none},
+ymin=1.24857346169805, ymax=2.62702315020817,
+ytick style={color=white!33.3333333333333!black},
+ytick={1.2,1.4,1.6,1.8,2,2.2,2.4,2.6,2.8},
+yticklabels={1.2,1.4,1.6,1.8,2.0,2.2,2.4,2.6,2.8}
+]
+\path [fill=color0, fill opacity=0.2, very thin]
+(axis cs:1,1.32170128202879)
+--(axis cs:1,1.31123026572124)
+--(axis cs:2,1.37943586359388)
+--(axis cs:3,1.35383196792479)
+--(axis cs:4,1.4125147380759)
+--(axis cs:5,1.5045691807526)
+--(axis cs:6,1.73855847902859)
+--(axis cs:7,2.09821307035801)
+--(axis cs:7,2.11010459909695)
+--(axis cs:7,2.11010459909695)
+--(axis cs:6,1.77537474701384)
+--(axis cs:5,1.54347203012721)
+--(axis cs:4,1.43815583864567)
+--(axis cs:3,1.3654502842472)
+--(axis cs:2,1.40764016979432)
+--(axis cs:1,1.32170128202879)
+--cycle;
+
+\path [fill=color1, fill opacity=0.2, very thin]
+(axis cs:1,1.57928930643035)
+--(axis cs:1,1.53615411385996)
+--(axis cs:2,1.66334140504014)
+--(axis cs:3,1.72147710695953)
+--(axis cs:4,1.72265307494241)
+--(axis cs:5,1.86189220791103)
+--(axis cs:6,2.0579310830109)
+--(axis cs:7,2.50675530494673)
+--(axis cs:7,2.56436634618498)
+--(axis cs:7,2.56436634618498)
+--(axis cs:6,2.09045732611566)
+--(axis cs:5,1.87629427307711)
+--(axis cs:4,1.74657361604329)
+--(axis cs:3,1.75756241081822)
+--(axis cs:2,1.69808322827577)
+--(axis cs:1,1.57928930643035)
+--cycle;
+
+\path [fill=color2, fill opacity=0.2, very thin]
+(axis cs:1,1.547339830932)
+--(axis cs:1,1.49956026530017)
+--(axis cs:2,1.7118870869814)
+--(axis cs:3,1.71640626028904)
+--(axis cs:4,1.77963887616611)
+--(axis cs:5,1.90444891921101)
+--(axis cs:6,1.98507341910127)
+--(axis cs:7,2.542796459306)
+--(axis cs:7,2.55134724685929)
+--(axis cs:7,2.55134724685929)
+--(axis cs:6,2.02043206603775)
+--(axis cs:5,1.93597701777938)
+--(axis cs:4,1.81105152315929)
+--(axis cs:3,1.76877109012378)
+--(axis cs:2,1.73126280871942)
+--(axis cs:1,1.547339830932)
+--cycle;
+
+\addplot [color0, mark=*, mark size=3, mark options={solid}]
+table {%
+1 1.31640031363155
+2 1.39317822981615
+3 1.35957493144292
+4 1.42539200430426
+5 1.52406284412461
+6 1.75652346666184
+7 2.10411776163085
+};
+\addlegendentry{\conveinsum}
+\addplot [color1, mark=*, mark size=3, mark options={solid}]
+table {%
+1 1.55760821350578
+2 1.68062363821
+3 1.73921764819486
+4 1.73527070724593
+5 1.86857900731771
+6 2.07382333450499
+7 2.53333548435036
+};
+\addlegendentry{\pytorch w/o ckpt}
+\addplot [color2, mark=*, mark size=3, mark options={solid}]
+table {%
+1 1.52429787768352
+2 1.72205443814622
+3 1.74087566195893
+4 1.79565007027219
+5 1.92109408585005
+6 2.00270893324731
+7 2.54707129726988
+};
+\addlegendentry{\pytorch w/ ckpt}
+\end{axis}
+
+\end{tikzpicture}

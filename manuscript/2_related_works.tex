@@ -1,0 +1,25 @@
+\section{Related works}
+\label{sec:related}
+
+\textbf{Low-rank factorization.} 
+Various types of low-rank factorization have been proposed to reduce the number of parameters in linear layers.
+% stage 1: flatten into matrix + (dictionary learning / singular value decomposition)
+Pioneering works proposed to flatten/unfold the parameters in convolutional layers into matrices (known as {\em matricization}), followed by (sparse) dictionary learning or matrix decomposition~\citep{jaderberg2014speeding, denton2014exploiting, zhang2015efficient}.
+% (2) Direct decomposition
+Subsequently, \citet{lebedev2015speeding} and \citet{kim2015compression} showed that it is possible
+to compress the parameters directly by standard tensor decompositions
+(in particular, \CPDlong or \TKDLong~\citep{kolda2009tensor}).
+% (3) Tensorization
+Further groundbreaking work ~\citep{novikov2015tensorizing, garipov2016ultimate} demonstrated that the low-order weights can be efficiently compressed by the tensor-train decomposition~\citep{oseledets2011tensor} by first reshaping the parameters into higher-order tensors.
+% (4) Extension to recurrent neural network
+This paradigm was later extended in two directions: (1) the tensor-train decomposition is used to compress LSTM/GRU layers in recurrent neural networks (RNNs)~\citep{yang2017tensor} and higher-order recurrent neural networks~\citep{yu2017long, su2020convolutional}; and (2) other decompositions are explored for better compression, 
+such as the tensor-ring decomposition~\citep{zhao2016tensor} and block-term decomposition~\citep{ye2020block}.
+
+\textbf{Other compression methods.} 
+{TNNs belongs to the large family of low-rank approximation methods, complementary to other compression techniques such as quantization and pruning. Many papers have justified that combining these different lines of the works may render more competitive model compression. For instance, \cite{lee2021qttnet} verify that TNNs with quantization achieve SOTA results on 3D tasks, and \cite{goyal2019compression} demonstrate that TNNs with pruning obtain SOTA image classification. This work, however, is chiefly concerned with the automated development and benchmarking of TNNs without any other compression methods, but for future work, we will investigate incorporating quantization, pruning, and knowledge distillation techniques directly into \autotnn.}
+
+\textbf{Existing libraries.}
+Various libraries support tensor operations. \textbf{(1) Pytorch}~\citep{paszke2019pytorch} supports specialized tensor operations commonly used in neural networks, including various convolutional layers and the \einsum function. However, it is non-trivial to implement arbitrary tensor operations optimally. \textbf{(2) TensorLy}~\citep{kossaifi2019tensorly} supports common tensorial operations across various platforms, including Pytorch and TensorFlow. However, the library does not support the construction of arbitrarily defined tensor networks. \textbf{(3) NumPy}~\citep{harris2020array} is a general computation library that has an optimal sequencer in its einsum function, but it does not support GPUs, nor does it support convolutions.
+\textbf{(4) Einops}~\citep{einops} extends the einsum functionality to GPUs.
+To the best of our knowledge, no existing library supports general tensor network evaluation and training on GPUs, and our work aims to close this gap.
+\textbf{(5) Gnetcon}~\citep{reustle2020fast} attempts to extend einsum to convolutions but does not support multi-way convolution between a collection of modes with more than two differing dimensions, nor was it ever fully integrated into an end-to-end training framework. \textbf{(6) Tensor Comprehensions (TC)} \citep{vasilache2018tensor} optimizes tensorial computations through translation of generalized ``Einstein'' notations of tensorial sequences (including multi-way convolutions). However, TC cannot tensorize a network -- the user needs to manually define their network architecture, whereas \autotnn can automatically tensorize \textit{and} compress a backbone network. Furthermore, defining tensorial sequences involving more than two tensors in the language of TC requires a hand-coded sequence of binary operations. In contrast, our \conveinsum can handle arbitrarily large tensor graphs by faithfully adapting the syntax of \einsum.

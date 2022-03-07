@@ -1,0 +1,70 @@
+\section{Experiments}
+\label{sec:experiments}
+
+In this section, we compare training and test run-times of \autotnn against the prevalent \pytorch. We demonstrate that \autotnn provides efficient solutions for deployment of TNNs in different tasks across various domains.
+
+\textbf{Tasks.} 
+We test \autotnn on a range of tasks under different network compression rates:
+% (1) video classification (VC)
+\textbf{(1)} A classic two-stream convolutional neural network \citep{simonyan2014two} is used for a video classification task, trained on the UCF-101 data set \citep{Soomro2012UCF101AD}. ResNet-101 \citep{he2016deep} was chosen as the ConvNet for both the spatial and temporal streams, pre-trained on ImageNet~\citep{deng2009imagenet}. The two-stream network is adapted from \citep{huang2019twostream}.
+% (2) automatic speech recognition (ASR)
+\textbf{(2)} An Automatic Speech Recognition task using the Conformer architecture \citep{gulati2020conformer}, which incorporates convolution modules between the attention modules and the feed-forward neural network modules of a Transformer model~\citep{vaswani2017attention}. The model is trained on the LibriSpeech Dataset~\citep{panayotov2015librispeech}.
+% (3) image classification (IC)
+\textbf{(3)} An image classification task trained on the CIFAR10~\citep{krizhevsky2009learning} data set using the classic ResNet-34 \citep{he2016deep} architecture. State-of-the-art accuracy requires the usage of knowledge distillation as shown in \citet{su2018tensorial}, which is beyond the purview of this work, but we do collect metrics such as training time per epoch and study the effects of using different tensor decompositions, which are reported in \Cref{app:experiments}.
+
+We an NVIDIA GeForce RTX 2080Ti for all tasks.
+
+\textbf{Baselines.} 
+We compare \autotnn against two baselines across all tasks: \pytorch implementation with and without checkpointing.
+In particular, we compare the usage of \conveinsum to optimally evaluate forward/backward tensor sequences against \pytorch with and without checkpointing, to demonstrates the benefits of \conveinsum.
+
+% Table for performance on various tasks
+\input{\texhome/tab_performance}
+
+\subsection{Accuracy and Memory Results}
+\label{sub:accuracy-memory}
+
+\emph{(1) TNNs demonstrate competitive accuracy even under aggressive parameter compression.}
+\Cref{tab:performance-rcp} shows the test/training accuracy of TNNs using a reshaped CP decomposition of their tensor weights under different compression rates in three machine learning tasks, namely Video Classification (VC), Automatic Speech Recognition (ASR) and Image Classification (IC). 
+A compression rate (CR) of $x\%$ indicates that the size of the TNN model is  $x\%$ of the original/baseline model size.
+As shown in \Cref{tab:performance-rcp}, for instance, a TNN using only $10\%$ size of the original backbone model (i.e., a ResNet-34 with $21M$ parameters) maintains $98\%$ of the baseline performance in an IC task on the CIFAR10 benchmark dataset. %\tr{(In the case of $100\%$ compression, the ranks of the reshaped tensors represented in CP forms are selected to match the original backbone model size. Since this is equivalent to an artificially rank-restrained CP-decomposition, the performance of such a TNN will not be equivalent to an un-tensorized counterpart despite containing the same number of parameters.)}
+
+%\citet{su2018tensorial} further demonstrate that TNNs which replace convolutional layers with tensorial layers with other forms of tensor decomposition such as CP, TT, TK and TR~\citep{su2018tensorial} are also able to compress the models without much performance loss.
+
+
+
+\input{\texhome/tab_max_batch_size}
+% Figure for maximum batch size
+
+\emph{(2) Naive \pytorch implementation of TNNs suffers from high intermediary memory costs during training. \autotnn significantly reduces these costs.}
+In TNNs, during training computation some intermediate data objects can be prohibitively large and thus difficult to fit into memory. In \Cref{tab:max-batch-size}, we present the maximal batch size allowed for two large-scale tasks under different compression rates: video classification (VC) and automatic speech recognition (ASR).
+We observe that if the size of a TNN matches the original backbone model size (i.e., CR=100\%), the maximal allowed batch size in a \pytorch implementation is 0 without checkpointing.
+Even if we compress the model to $1\%$ of the original \# of parameters, the maximal allowed batch size is still limited, making the computation infeasible or too slow. 
+The non-optimal evaluation order of the tensor operations by \pytorch results in large intermediate objects that do not fit into the memory.
+As indicated in \Cref{tab:max-batch-size}, even an incorporation of checkpointing into \pytorch implementation does not help much with the problem.
+The reason for this is that although checkpointing sidesteps saving any intermediate results in memory arising during forward passes and instead recomputes them in the backward passes, the order of evaluation in the forward pass remains unchanged. If a an intermediary computation causes overflow, this issue is likely to persist even in a checkpointed implementation -- only the optimal sequencer can help with such a dilemma. On average, the most cost-parsimonious path found by the optimal sequencer will contain smaller intermediate products than a naive left-to-right \pytorch evaluation. 
+
+
+
+
+\subsection{Runtime results}
+\label{sub:runtime}
+Our \conveinsum autonomously implements an % cost-capped adaptive
+optimal sequencer which evaluates a tensorial forward or backwards pass in an order which incurs the minimum number of FLOPS. 
+Additionally, \conveinsum uses checkpointing to avoid memory overflow for backward passes.
+
+% 
+%\input{\texhome/runtime_cifar-rcp}
+\input{\texhome/runtime_speech_rcp}
+\input{\texhome/runtime_video_rcp}
+
+\emph{(1) The optimal sequencer used in \conveinsum significantly improves the runtime efficiency of training and test in TNNs.} 
+In \Cref{fig:imagecls-rcp-vs-pytorch,fig:speech-rcp-vs-pytorch,fig:video-rcp-vs-pytorch}, we compare the training and test times between \conveinsum and \pytorch (with and w/o checkpointing) implementations over a wide range of model scales and using different forms of tensor decomposition. The IC and VC tasks use RCP decompositions, while the ASR task uses a standard CP decomposition. 
+We observe that \conveinsum universally outperforms the baselines. In the VC task, for each model size, we use the maximal allowable batch size, while in the ASR task, we compare implementations using the same batch size. Furthermore, in \Cref{tab:different-tensor-forms} we show that \conveinsum outperforms \pytorch in the IC task under different tensor decompositions.
+We observe that when memory requirement is the bottleneck of a task (such as VC), checkpointing helps accelerate the runtime by alleviating potential memory overflows and allowing more batches. On the other hand, when the batch sizes are the same (as in ASR), checkpointing itself trades computational complexity for space, thus increasing the overall runtime. In either scenario, \conveinsum achieves the fastest runtimes in all tasks compared to \pytorch implementations with and without checkpointing.
+
+\emph{(2) \autotnn works for weight tensors with different sizes.}
+\autotnn serves as a general efficient library solution and is tensor-structure-agnostic. The networks we have experimented with contain weights of vastly differing sizes. As shown in \Cref{fig:imagecls-rcp-vs-pytorch,fig:speech-rcp-vs-pytorch,fig:video-rcp-vs-pytorch}, \autotnn exhibits competitive results against existing \pytorch solutions (with or without) checkpointing over various tensor sizes.
+
+\emph{(3) \autotnn works for a variety of tensor forms.}
+\conveinsum is both data-agnostic and structure-agnostic. Given any sequence of multilinear tensor operations, \conveinsum computes the optimal sequence with least number of FLOPs. As a result, \conveinsum is a universal solution to training any TNN. \Cref{tab:different-tensor-forms} in \Cref{app:experiments} shows the results of the image classification task on CIFAR10 using different forms of tensor decomposition. We could observe that \conveinsum outperforms \pytorch with/without checkpointing in all cases. 

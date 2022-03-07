@@ -1,0 +1,21 @@
+\begin{table}[!htbp]
+\vspace{-1em}
+\caption{\textbf{TNN performance under various model scales for diverse machine learning tasks.} Automatic Speech Recognition (ASR) on LibriSpeech is measured by Word Error Rate (WER) (the lower, the better). Image classification (IC) on CIFAR10 (results from~\cite{su2018tensorial}) is measured by top-1 precision. Video classification (VC) on UCF-101 is measured by top-1 accuracy.}
+ \label{tab:performance-rcp}
+  \centering
+\resizebox{0.7\columnwidth}{!}{\begin{tabular}{llll}
+    \toprule
+    \thead{Compression Rate (CR)} & \thead{IC} & \thead{ASR}  & \thead{VC}\\
+    \midrule
+    Original & 93.2  & 2.1 &  88.98\\
+    \midrule
+    100\%   & -     & 2.08 &  89.00\\
+    50\%    & -     & 2.29 &  88.61\\
+    20\%    & -     & 2.36 &  88.10\\
+    10\%    &91.28  & 2.43 & 87.63\\
+    5\%     &89.86  & 3.01 &  86.62\\
+    2\%     &85.70  & 3.76 &  86.41\\
+%    1\%     &\textcolor{red}{78.61}  & ? & 3.92 &  84.03\\
+    \bottomrule
+ \end{tabular}}
+\end{table}

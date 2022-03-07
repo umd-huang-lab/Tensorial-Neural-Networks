@@ -1,0 +1,20 @@
+\begin{figure}[!htbp]
+\vspace{-1em}
+\begin{minipage}[b]{.5\linewidth}
+\centering
+\resizebox{\textwidth}{!}{
+   \input{\texhome/asr_cls_rcp_train}
+    }
+\subcaption{CP Train}\label{fig:speech-rcp-vs-pytorch-train}
+\end{minipage}%
+\hfill
+\begin{minipage}[b]{.5\linewidth}
+\centering
+\resizebox{\textwidth}{!}{
+    \input{\texhome/asr_cls_rcp_test}
+    }
+\subcaption{CP Test}\label{fig:speech-rcp-vs-pytorch-test}
+\end{minipage}
+\vspace{-2em}
+\caption{\textbf{Run-time comparison between \conveinsum and \texttt{Pytorch} for a speech recognition task}. A CP-TNN is trained on the LibriSpeech dataset. Runtimes are averaged over 3 random runs, and error bars are denoted by the shaded areas.}\label{fig:speech-rcp-vs-pytorch}
+\end{figure}

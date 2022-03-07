@@ -1,0 +1,43 @@
+\begin{table*}[!htbp]
+\centering
+\resizebox{\textwidth}{!}{
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{c| c |c}
+\toprule
+Operation & Definition & \conveinsum \\
+\midrule
+	% 1) tensor contraction
+	\begin{tabular}{l} mode-($k, l$) \\ Tensor Contraction \end{tabular} & 
+	\begin{tabular}{l} $\tensor{T}_{i_0, \cdots, i_{k-1}, i_{k+1}, \cdots, i_{m-1}, j_0, \cdots, j_{l-1}, j_{l+1}, \cdots, j_{n-1}}$ \\
+	$ = \big< \tensorSup{T}{0}_{i_0, \cdots, i_{k-1},{ :}, i_{k+1}, \cdots, i_{m-1}},  \tensorSup{T}{1}_{j_0, \cdots, j_{l-1}, {:}, j_{l+1}, \cdots, j_{n-1}}\big>$ \\ 
+	\end{tabular} & \begin{tabular}{l} $\textcolor{red}{I_0 \cdots I_{k-1} I_k \cdots I_{m-1}}, \textcolor{blue}{J_0 \cdots J_{l-1} J_l \cdots J_{n-1}}$ \\ $\rightarrow  I_{1} I_{k-1} I_{k+1} I_{m-1} J_0 \cdots J_{l-1} J_{l+1} \cdots J_{n-1}$ \end{tabular}\\
+\midrule
+	% 2) tensor convolution
+	\begin{tabular}{l} mode-$(k, l)$ \\Tensor Convolution \end{tabular} & 
+	\begin{tabular}{l}$\tensorInd{T}{i_0, \cdots, i_{k-1}, {:}, i_{k+1}, \cdots, i_{m-1}, j_0, \cdots, j_{l-1}, j_{l+1}, \cdots, j_{n-1}}{2} $ \\
+	$= \tensorSup{T}{0}_{i_0, \cdots, i_{k-1}, {:}, i_{k+1}, \cdots, i_{m-1}} \ast \tensorSup{T}{1}_{j_0, \cdots, j_{l-1},{ :}, j_{l+1}, \cdots, j_{n-1}}$ \\ 
+	 \end{tabular} & \begin{tabular}{l} $\textcolor{red}{I_0 \cdots I_{k-1} C \cdots I_{m-1}}, \textcolor{blue}{J_0 \cdots J_{l-1} C \cdots J_{n-1}}$ \\ $\rightarrow  I_{1} I_{k-1} C I_{k+1} I_{m-1} J_0 \cdots J_{l-1} J_{l+1} \cdots J_{n-1} \mid C$ \end{tabular}\\
+\midrule
+	% 3) tensor batch product
+	\begin{tabular}{l} mode-($k, l$) \\ Tensor Batch Product \end{tabular} &
+	\begin{tabular}{l} $\tensor{T}_{i_0, \cdots, i_{k-1}, {r}, i_{k+1}, \cdots, i_{m-1}, j_0, \cdots,  j_{n-1}} $ \\
+	$=\tensorSup{T}{0}_{i_0, \cdots, i_{k-1}, {r}, i_{k+1}, \cdots, i_{m-1}} ~ \tensorSup{T}{1}_{j_0, \cdots, j_{l-1},{ r}, j_{l+1}, \cdots, j_{n-1}}$ \\ 
+	\end{tabular} & \begin{tabular}{l} $\textcolor{red}{I_0 \cdots I_{k-1} C \cdots I_{m-1}}, \textcolor{blue}{J_0 \cdots J_{l-1} J_l \cdots J_{n-1}}$ \\ $\rightarrow  I_{1} I_{k-1} I_k I_{k+1} I_{m-1} J_0 \cdots J_{l-1} J_{l+1} \cdots J_{n-1}$  \end{tabular}\\
+\midrule
+	% 2) tensor outer product
+	\begin{tabular}{l} Tensor Outer Product \end{tabular} & 
+	\begin{tabular}{l}  $\tensorSup{T}{0}_{i_0, \cdots, i_{k-1}, i_k, i_{k+1}, \cdots, i_{m-1}, j_0, \cdots, j_{l-1}, j_l, j_{l+1}, \cdots, j_{n-1}}$ \\
+	$= \tensorSup{T}{1}_{i_0, \cdots, i_{m-1}} \ast \tensorSub{Y}{j_0, \cdots, j_{l+1}, \cdots, j_{n-1}}$ \\ 
+	 \end{tabular} &
+	 \begin{tabular}{l} $\textcolor{red}{I_0 \cdots I_{m-1}}, \textcolor{blue}{J_0 \cdots J_{n-1}}$ \\ $\rightarrow  I_{1} \cdots I_{m-1} J_0 \cdots J_{n-1}$  \end{tabular}\\
+\bottomrule
+\end{tabular}
+}
+\caption{\textbf{Primitive tensor operations}. 
+$\tensorSup{T}{0} \in \R^{I_0 \times \cdots \times I_{m-1}}, 
+\tensorSup{T}{1} \in \R^{J_0 \times \cdots \times J_{n-1}}$ are the input tensors and
+$\tensor{T}$ is the output tensor.
+Note that both mode-$(I_k, J_l)$ tensor contraction, mode-($I_k, J_l$) tensor batch product 
+are legal only if $I_k = J_l$. The outer product can be performed with any two tensors. Red highlighted modes are owned by $\tensorSup{T}{0}$ while blue highlighted modes belong to $\tensorSup{T}{1}$.}
+\label{tab:primitive-operations}
+\end{table*}

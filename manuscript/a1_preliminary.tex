@@ -1,0 +1,238 @@
+\section{Supplementary Material for Tensor Operations and \einsum}
+\label{app:A1multi}
+
+\subsection{Examples of primitive operations}\label{app:subsec:einsum}
+
+% 1) Tensor contraction
+\textbf{Contraction.}
+{\em Tensor contraction} generalizes matrix multiplication to higher-order tensors. 
+For instance, given two $3^\rd$ order tensors $\tensorSup{T}{1} \in \R^{A \times B \times C}, \tensorSup{T}{2} \in \R^{A \times D \times E}$, we can define a contraction between the modes with shared dimension size $A$. The operation returns a $4^\th$ order tensor $\tensor{T} \in \R^{B \times C \times D \times E}$ with its entries calculated as:
+%\begin{equation}
+%\label{eq:contraction}
+$\tensorSub{T}{b,c,d,e} = \sum_{a = 1}^{A}
+\tensorInd{T}{1}{a,b,c} \cdot \tensorInd{T}{2}{a,d,e}$.
+%\end{equation}
+This contraction would be submitted to \einsum as:
+\begin{lstlisting}
+T = einsum("abc,ade->bcde", T1, T2)
+\end{lstlisting}
+\vspace{-1em}
+Here, the modes are ordered and represented by concatenated letters (which can be case-sensitive). These sub-strings, corresponding to each input tensor, are separated by commas and lie to the left of the arrow. The output, which lies to the right of the arrow, concatenates all mode letters in a single string sans the letter $\textsf{"a"}$ to indicate that a contraction must occur over these modes. The remaining parameters correspond to the ordered set of tensors. This method will fail if the modes denoted by the same letters do not share dimension sizes. So a contraction corresponds to a letter that appears in all inputs, but not the output.
+
+% 2) Tensor outer product
+\textbf{Outer product.}
+{\em Tensor outer product} generalizes outer product to higher-order tensors. For instance, an outer product of two $3^\rd$ order tensors $\tensorSup{T}{1} \in \R^{A \times B \times C}, \tensorSup{T}{2} \in \R^{D \times E \times F}$ returns a $6^\th$ order tensor $\tensor{T} \in \R^{A \times B \times C \times D \times E \times F}$. The entries of $\tensor{T}$ are calculated as:
+%\begin{equation}
+%\label{eq:outer-product}
+$\tensorSub{T}{a,b,c,d,e,f} =
+\tensorInd{T}{1}{a,b,c} \cdot
+\tensorInd{T}{2}{d,e,f}$.
+%\end{equation}
+In the language of \einsum, we write this as:
+\begin{lstlisting}
+T = einsum("abc,def->abcdef", T1, T2)
+\end{lstlisting}
+\vspace{-1em}
+Notice that a letter for the outer product only appears in one of the inputs and in the output.
+
+% 3) Tensor batch product
+\textbf{Batch product.}
+{\em Tensor batch product} is a variation of the outer product. Given tensors $\tensorSup{T}{1} \in \R^{A \times B \times C}, \tensorSup{T}{2} \in \R^{C \times E \times D}$, the batch product over the dimensional-shared mode $C$ returns a $5^\th$ order tensor $\tensor{T}\in\R^{A \times B \times C \times D \times E}$. The entries of $\tensor{T}$ are calculated as:
+%\begin{equation}
+%\label{eq:batch-product}
+$\tensorSub{T}{a,b,c,d,e} =
+\tensorInd{T}{1}{a,b,c} \cdot
+\tensorInd{T}{2}{a,d,e}$.
+%\end{equation}
+The \einsum implementation is
+\begin{lstlisting}
+T = einsum("abc,cde->abcde", T1, T2)
+\end{lstlisting}
+\vspace{-1em}
+Notice that the letter corresponding to the batch product appears in both inputs and the output.
+
+
+
+In this section, we will outline the multi-linear operations covered in \Cref{sec:preliminary} in full generality along with their \conveinsum representations and other tensor decompositions of TNNs. Much of this content adapts and follows the notation of \citet{su2018tensorial}.
+
+\subsection{Fully General Multilinear operations} 
+\label{app-sub:multiops}
+
+
+% Multi-operations among multiple tensors
+\textbf{Multi-operations among multiple tensors.}
+We can simultaneously perform a series of multi-linear operations among a group of tensors.
+Let $\tensorSup{T}{1} \in \R^{I \times T \times S}$,
+$\tensorSup{T}{2} \in \R^{J \times R \times T}$, and
+$\tensorSup{T}{3} \in \R^{K \times S \times R}$. We can define a simultaneous contraction on modes with dimension sizes $R, S,$ and $T$.
+This simultaneous contraction returns a $3^\rd$ order tensor $\tensor{T} \in \R^{I \times J \times K}$, with its entries computed as
+\begin{equation}
+\label{eq:multi-operation-2}
+\tensorSub{T}{i,j,k} = \sum_{r = 1}^{R} \sum_{s = 1}^{S} \sum_{t = 1}^{T} 
+\tensorInd{T}{1}{i,t,s} \tensorInd{T}{2}{j,r,t} \tensorInd{T}{3}{k,s,r}
+\end{equation}
+Equivalently, via \conveinsum, we can write it as:
+\begin{lstlisting}
+T = conv_einsum("its,jrt,ksr->ijk", T1, T2, T3)
+\end{lstlisting}
+\vspace{-1em}
+% In Appendix~\ref{multiops}, 
+Below we outline a simpler example that performs multiple operations between two tensors.
+
+
+% Table for primitive operations
+\input{\texhome/tab_primitive_operations}
+
+% (1) Tensor contraction
+\paragraph{Tensor contraction} 
+Given tensors $\tensorSup{T}{0}\in\mathbb{R}^{I_0 \times \cdots I_k \times I_{m-1}}, \tensorSup{T}{1}\in\mathbb{R}^{J_0 \times \cdots J_l  \cdots \times J_{n-1}}$, the mode-($k,l$) contraction returns an order $(m+n-2)$ tensor \\$\tensor{T}\in\mathbb{R}^{I_0\times\cdots I_{k-1} \times I_{k+1}\times \cdots \times I_{m-1}\times J_0 \times \cdots \times J_{l-1}\times J_{l+1}\times\cdots\times J_{n-1} }$. The entries of $\tensor{T}$ are calculated as follows: 
+\begin{align*}
+&\tensor{T}_{i_0, \cdots, i_{k-1}, i_{k+1}, \cdots, i_{m-1}, j_0, \cdots, j_{l-1}, j_{l+1}, \cdots, j_{n-1}}\\ &=\sum_{r=1}^{I_k-1}\tensorSup{T}{0}_{i_0, \cdots, i_{k-1},r, i_{k+1}, \cdots, i_{m-1}}\cdot  \tensorSup{T}{1}_{j_0, \cdots, j_{l-1}, r, j_{l+1}, \cdots, j_{n-1}}\\
+&=\langle \tensorSup{T}{0}_{i_0, \cdots, i_{k-1},{ :}, i_{k+1}, \cdots, i_{m-1}},  \tensorSup{T}{1}_{j_0, \cdots, j_{l-1}, {:}, j_{l+1}, \cdots, j_{n-1}}\rangle.
+\end{align*}
+
+% (2) Tensor convolution
+\paragraph{Tensor Convolution} 
+Given tensors $\tensorSup{T}{0}\in\mathbb{R}^{I_0\times \cdots \times I_{m-1}}, \tensorSup{T}{1}\in\mathbb{R}^{J_0 \times \cdots \times J_{n-1}}$, the mode-($k,l$) convolution returns an order $(m+n-1)$ tensor \\$\tensor{T}\in\mathbb{R}^{I_0\times\cdots I'_k \times \cdots \times I_{m-1}\times J_0 \times \cdots \times J_{l-1}\times J_{l+1}\times\cdots\times J_{n-1}}$. For any convolution operator * the entries of $\tensor{T}$ are calculated as follows:
+\begin{align*}
+& \tensor{T}_{i_0, \cdots, i_{k-1}, {:}, i_{k+1}, \cdots, i_{m-1}, j_0, \cdots, j_{l-1}, j_{l+1}, \cdots, j_{n-1}} \\
+	&= \tensorSup{T}{0}_{i_0, \cdots, i_{k-1}, {:}, i_{k+1}, \cdots, i_{m-1}} \ast \tensorSup{T}{1}_{j_0, \cdots, j_{l-1},{ :}, j_{l+1}, \cdots, j_{n-1}}\\
+	&= \tensorSup{T}{1}_{j_0, \cdots, j_{l-1},{ :}, j_{l+1}, \cdots, j_{n-1}} \bar{\ast} \tensorSup{T}{0}_{i_0, \cdots, i_{k-1}, {:}, i_{k+1}, \cdots, i_{m-1}}
+\end{align*}
+Here we have intentionally left $\ast$ and the dimension of the $k$-th mode $I'_k$ ambiguous, as it will vary depending on the type of convolution specified by the user. For example, with max padding, we have that $I'_k=\max\{I_k,J_l\}$, and with same-padding we have $I'_k=I_k$. 
+
+% (3) tensor batch product
+\paragraph{Tensor Batch Product}
+Given tensors $\tensorSup{T}{0}\in\mathbb{R}^{I_0\times \cdots I_{k} \cdots \times I_{m-1}}, \tensorSup{T}{1}\in\mathbb{R}^{J_0 \times \cdots I_l \cdots \times J_{n-1}}$, the mode-($k,l$) batch product returns an order $(m+n-1)$ tensor $\tensor{T}\in\mathbb{R}^{I_0\times\cdots I_k \times \cdots \times I_{m-1}\times J_0 \times \cdots \times \cdots\times J_{n-1}}$. The entries of $\tensor{T}$ are calculated as follows:
+\begin{align*}
+& \tensor{T}_{i_0, \cdots, i_{k-1}, r, i_{k+1}, \cdots, i_{m-1}, j_0, \cdots, j_{l-1}, j_{l+1}, \cdots, j_{n-1}} \\
+	&= \tensorSup{T}{0}_{i_0, \cdots, i_{k-1}, r, i_{k+1}, \cdots, i_{m-1}} \tensorSup{T}{1}_{j_0, \cdots, j_{l-1},r, j_{l+1}, \cdots, j_{n-1}}
+\end{align*}
+
+% (4) tensor outer product
+\paragraph{Tensor Outer Product}
+ Given tensors $\tensorSup{T}{0}\in\mathbb{R}^{I_0\times \cdots \times I_{m-1}}, \tensorSup{T}{1}\in\mathbb{R}^{J_0 \times \cdots \times J_{n-1}}$, the outer product returns an order $(m+n)$ tensor $\tensor{T}\in\mathbb{R}^{I_0\times\cdots I_k \times \cdots \times I_{m-1}\times J_0 \times \cdots \times J_{n-1}}$. The entries of $\tensor{T}$ are calculated as follows:
+\begin{align}
+\tensor{T}_{i_0, \cdots, i_{m-1}, j_0, \cdots, j_{n-1}}
+	&= \tensorSup{T}{0}_{i_0, \cdots, i_{m-1}} \tensorSup{T}{1}_{j_0, \cdots, j_{n-1}}.
+\end{align}
+
+\Cref{tab:primitive-operations} summarizes these multi-linear operations along with their \conveinsum input representations. 
+
+\subsection{Tensorial Neural Networks}
+\label{app-sub:TNN}
+
+% 1) CP decomposition
+\textbf{CP decomposition}~\citep{kolda2009tensor}.
+(1a) In a {\em CP convolutional layer}~\citep{lebedev2015speeding}, the original kernel $\tensor{W} \in \R^{T \times S \times H \times W}$ is CP factorized as:
+\begin{lstlisting}
+W = conv_einsum("rt,rs,rh,rw->tshw", W1, W2, W3, W4).
+\end{lstlisting}
+\vspace{-0.5em}
+As a result, the layer is parameterized by $4$ weight matrices $\matrixSup{W}{1} \in \R^{R \times T}$, $\matrixSup{W}{2} \in \R^{R \times S}$, $\matrixSup{W}{3} \in \R^{R \times H}$, $\matrixSup{W}{4} \in \R^{R \times W}$. We can write this layer in \conveinsum as
+\begin{lstlisting}
+Y = conv_einsum("bshw,rt,ts,rh,rw->bthw|hw", X, W1)
+\end{lstlisting}
+\vspace{-0.5em}
+
+(1b) In a {\em reshaped CP convolutional layer}~\citep{su2018tensorial}, the original kernel $\mytensor{W}$ is first reshaped as $\mytensor{\overline{W}} \in \R^{T_1 \cdots \times T_M \times S_1 \cdots \times S_M \times H \times W}$ such that $T = \prod_{m = 1}^{M} T_m$ and $S = \prod_{m = 1}^{M} S_m$. Suppose $M = 3$, then the reshaped kernel is factorized by a CP decomposition as
+\begin{lstlisting}
+W = conv_einsum("r(t1)(s1),r(t2)(s2),r(t3)(s3),rhw->(t1)(t2)(t3)(s1)(s2)(s3)hw", W1, W2, W3, W0).
+\end{lstlisting}
+\vspace{-0.5em}
+As a result, the layer is parameterized by $(M + 1)$ weight tensors $\tensorSup{W}{m} \in \R^{R \times T_m \times S_m}$ and $\tensorSup{W}{0} \in \R^{R \times H \times W}$. We can write the layer in \conveinsum as
+\begin{lstlisting}
+Y = conv_einsum("b(s1)(s2)(s3)hw,r(t1)(s1),r(t2)(s2),r(t3)(s3),rhw->b(t1)(t2)(t3)hw|hw", X, W1, W2, W3, W0)
+\end{lstlisting}
+
+% 2) Tucker decomposition 
+\textbf{Tucker (TK) decomposition}~\citep{kolda2009tensor}.
+(2a) In a {\em TK convolutional layer}~\citep{lebedev2015speeding}, the original kernel $\tensor{W} \in \R^{T \times S \times H \times W}$ is factorized by TK as:
+\begin{lstlisting}
+W = conv_einsum("(r1)t,(r2)s,(r1)(r2)hw->tshw", W1, W2, W0)
+\end{lstlisting}
+\vspace{-0.5em}
+Consequently, the layer has $3$ weight tensors $\matrixSup{W}{1} \in \R^{R_1 \times T}$, $\matrixSup{W}{2} \in \R^{R_2 \times S}$, $\tensorSup{W}{0} \in \R^{R_1 \times R_2 \times H \times W}$ as parameters. We can write the layer in \conveinsum as
+\begin{lstlisting}
+Y = conv_einsum("bshw,(r1)t,(r2)s,(r1)(r2)hw->bthw|hw", X, W1, W2, W0)
+\end{lstlisting}
+\vspace{-0.5em}
+
+(2b) In a {\em reshaped TK convolutional layer}~\citep{su2018tensorial}, the original kernel $\mytensor{W}$ is first reshaped as $\mytensor{\overline{W}} \in \R^{T_1 \cdots \times T_M \times S_1 \cdots \times S_M \times H \times W}$ such that $T = \prod_{m = 1}^{M} T_m$ and $S = \prod_{m = 1}^{M} S_m$. Suppose $M = 3$, the reshaped kernel is then factorized by a TK decomposition as
+\begin{lstlisting}
+W = conv_einsum("(r1)(t1)(s1),(r2)(t2)(s2),(r3)(t3)(s3),(r0)hw,(r0)(r1)(r2)(r3)->(t1)(t2)(t3)(s1)(s2)(s3)hw", W1, W2, W3, W0, C)
+\end{lstlisting}
+\vspace{-0.5em}
+Therefore, the layer has $(M + 2)$ weight tensors $\tensorSup{W}{m} \in \R^{R \times T_m \times S_m}$, $\tensorSup{W}{0} \in \R^{R \times H \times W}$, $\tensor{C} \in \R^{R_0 \times R_1 \times R_2 \times R_3}$. We can write the layer in \conveinsum as
+\begin{lstlisting}
+Y = conv_einsum("b(s1)(s2)(s3)hw,(r1)(t1)(s1),(r2)(t2)(s2),(r3)(t3)(s3),(r0)hw,(r0)(r1)(r2)(r3)->b(t1)(t2)(t3)hw|hw", X, W1, W2, W3, W0, C)
+\end{lstlisting}
+
+% Tensor-Train decomposition
+\textbf{Tensor-Train (TT) decomposition}~\citep{oseledets2011tensor}.
+(3a) In a {\em TT convolutional layer}, the original kernel $\tensor{W} \in \R^{T \times S \times H \times W}$ is factorized by TT as:
+\begin{lstlisting}
+W = conv_einsum("(r1)t,(r1)(r2)h,(r2)(r3)w,(r3)s->tshw", W1, W2, W3, W4)
+\end{lstlisting}
+\vspace{-1em}
+Consequently, the layer has $4$ weight tensors $\matrixSup{W}{1} \in \R^{R_1 \times T}$, $\matrixSup{W}{2} \in \R^{R_1 \times R_2 \times H}$, $\tensorSup{W}{3} \in \R^{R_2 \times R_3 \times W}$, and $\tensorSup{W}{4} \in \R^{R_3 \times S}$ as parameters. We can write the layer in \conveinsum as
+\begin{lstlisting}
+Y = conv_einsum("bshw,(r1)t,(r1)(r2)h,(r2)(r3)w,(r3)s->bthw|hw", X, W1, W2, W3, W4).
+\end{lstlisting}
+\vspace{-0.5em}
+
+(3b) In a {\em reshaped TT convolutional layer}~\citep{garipov2016ultimate}, the original kernel $\mytensor{W}$ is first reshaped as $\mytensor{\overline{W}} \in \R^{T_1 \cdots \times T_M \times S_1 \cdots \times S_M \times H \times W}$ such that $T = \prod_{m = 1}^{M} T_m$ and $S = \prod_{m = 1}^{M} S_m$. Suppose $M = 3$, the reshaped kernel is then factorized by a TT decomposition as
+\begin{lstlisting}
+W = conv_einsum("(r1)(t1)(s1),(r1)(r2)(t2)(s2),(r2)(r3)(t3)(s3),(r3)hw->(t1)(t2)(t3)(s1)(s2)(s3)hw", W1, W2, W3, W0).
+\end{lstlisting}
+\vspace{-0.5em}
+Therefore, the layer has $(M + 1)$ weight tensors $\tensorSup{W}{1} \in \R^{R_1 \times T_1 \times S_1}$, $\tensorSup{W}{m} \in \R^{R_{m - 1} \times R_m \times T_m \times S_m}$, and $\tensorSup{W}{0} \in \R^{R_3 \times H \times W}$. The layer in \conveinsum is
+\begin{lstlisting}
+Y = conv_einsum("b(s1)(s2)(s3)hw,(r1)(t1)(s1),(r1)(r2)(t2)(s2),(r2)(r3)(t3)(s3),(r3)hw->b(t1)(t2)(t3)hw|hw", X, W1, W2, W3, W0).
+\end{lstlisting}
+
+% Tensor-Ring decomposition
+\textbf{Tensor-Ring (TR) decomposition}~\citep{zhao2016tensor}.
+(4a) In a {\em TR convolutional layer}, the original kernel $\tensor{W} \in \R^{T \times S \times H \times W}$ is factorized by TR as:
+\begin{lstlisting}
+W = conv_einsum("(r0)(r1)t,(r1)(r2)h,(r2)(r3)w,(r3)(r0)s->tshw", W1, W2, W3, W4)
+\end{lstlisting}
+\vspace{-1em}
+Consequently, the layer has $4$ weight tensors $\matrixSup{W}{1} \in \R^{R_1 \times T}$, $\matrixSup{W}{2} \in \R^{R_0 \times R_1 \times R_2 \times H}$, $\tensorSup{W}{3} \in \R^{R_2 \times R_3 \times W}$, and $\tensorSup{W}{4} \in \R^{R_3 \times R_0 \times S}$ as parameters. We can write the layer in \conveinsum as
+\begin{lstlisting}
+Y = conv_einsum("bshw,(r0)(r1)t,(r1)(r2)h,(r2)(r3)w,(r3)(r0)s->bthw|hw", X, W1, W2, W3, W4)
+\end{lstlisting}
+\vspace{-0.5em}
+
+(4b) In a {\em reshaped TR convolutional layer}~\citep{su2018tensorial}, the original kernel $\mytensor{W}$ is first reshaped as $\mytensor{\overline{W}} \in \R^{T_1 \cdots \times T_M \times S_1 \cdots \times S_M \times H \times W}$ such that $T = \prod_{m = 1}^{M} T_m$ and $S = \prod_{m = 1}^{M} S_m$. Suppose $M = 3$, the reshaped kernel is then factorized by a TR decomposition as
+\begin{lstlisting}
+W = conv_einsum("(r0)(r1)(t1)(s1),(r1)(r2)(t2)(s2),(r2)(r3)(t3)(s3),(r3)(r0)hw->(t1)(t2)(t3)(s1)(s2)(s3)hw", W1, W2, W3, W0)
+\end{lstlisting}
+\vspace{-0.5em}
+Therefore, the layer has $(M + 1)$ weight tensors $\tensorSup{W}{m} \in \R^{R_{m - 1} \times R_m \times T_m \times S_m}$, and $\tensorSup{W}{0} \in \R^{R_3 \times R_0 \times H \times W}$. The layer in \conveinsum is
+\begin{lstlisting}
+Y = conv_einsum("b(s1)(s2)(s3)hw,(r0)(r1)(t1)(s1),(r1)(r2)(t2)(s2),(r2)(r3)(t3)(s3),(r3)(r0)hw->b(t1)(t2)(t3)hw|hw", X, W1, W2, W3, W0)
+\end{lstlisting}
+
+\subsubsection{Efficient Convolutional Layers} \label{app:efficientNN}
+A number of works design efficient convolutional layers by modifying the linear operations in deep networks. These types of convolutional layers can be thought as special cases of TNNs. 
+Our proposed \conveinsum can cover these alternative efficient designs as well. 
+Here, we review two representative designs, namely the {\em interleaved group convolution}~\citep{zhang2017interleaved} and {\em separable depth-wise convolution}~\citep{chollet2017xception}, in the language of \conveinsum.
+
+% group interleaved convolution
+{\bf (1)} In an {\em interleaved group convolution}, the layer partitions the input channels $S$ into two modes $M$ and $S^\prime$ such that $S = M S^\prime$, and the output channel $T$ into two modes $N$ and  $T^\prime$ such that $T = N T^\prime$.
+As a result, the layer has two $4^\th$ order tensors $\tensorSup{W}{1} \in \R^{N \times M \times H \times W}$, $\tensorSup{W}{2} \in \R^{T^\prime \times S^\prime \times H \times W}$ as parameters and computes its output as:
+\begin{lstlisting}
+Y = conv_einsum("bmshw,nmhw,tshw->bnthw|hw",X,W1,W2).
+\end{lstlisting}
+\vspace{-1em}
+% separable depth-wise convolution
+{\bf (2)} In a {\em separable depth-wise convolution}, we assume the input and output channels are the same, i.e., $T = S$. 
+The layer is parameterized by two matrices $\matrixSup{W}{1} \in \R^{S \times H}$ and $\mymatrix{W}_2 \in \R^{S \times W}$ such that
+% begin
+\begin{lstlisting}
+Y = conv_einsum("bshw,sh,sw->bshw|hw", X, W1, W2)
+\end{lstlisting}
+\vspace{-1em}
+% end
+We refer to \citet{hayashi2019exploring} for more examples.

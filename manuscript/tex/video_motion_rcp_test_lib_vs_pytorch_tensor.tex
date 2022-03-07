@@ -1,0 +1,100 @@
+\begin{tikzpicture}
+
+\definecolor{color0}{rgb}{0.886274509803922,0.290196078431373,0.2}
+\definecolor{color2}{rgb}{0.203921568627451,0.541176470588235,0.741176470588235}
+\definecolor{color1}{rgb}{0.596078431372549,0.556862745098039,0.835294117647059}
+
+\begin{axis}[
+axis line style={white},
+legend cell align={left},
+legend style={
+  fill opacity=0.8,
+  draw opacity=1,
+  text opacity=1,
+  at={(0.97, .97)},
+  anchor=north east,
+  draw=white!80!black
+},
+tick align=outside,
+x grid style={white},
+xlabel={compression rate},
+xmajorticks=true,
+xtick style={draw=none},
+xmin=0.7, xmax=7.3,
+xtick style={color=white!33.3333333333333!black},
+xtick={0,1,2,3,4,5,6,7,8},
+xticklabels={,1\%,2\%,5\%,10\%,20\%,50\%,100\%,},
+y grid style={white!93.3333333333333!black},
+ylabel={seconds per epoch},
+ymajorgrids,
+ymajorticks=true,
+ytick style={draw=none},
+ymin=672.920680442213, ymax=3274.58995911469,
+ytick style={color=white!33.3333333333333!black}
+]
+\path [fill=color0, fill opacity=0.2, very thin]
+(axis cs:1,811.197211734943)
+--(axis cs:1,809.311383559561)
+--(axis cs:2,797.680837493999)
+--(axis cs:3,797.891855126853)
+--(axis cs:4,791.178374927326)
+--(axis cs:5,850.354460571758)
+--(axis cs:6,887.096614639351)
+--(axis cs:7,1361.09427982447)
+--(axis cs:7,1363.19545041028)
+--(axis cs:7,1363.19545041028)
+--(axis cs:6,889.354224874219)
+--(axis cs:5,855.87117788804)
+--(axis cs:4,794.946955823782)
+--(axis cs:3,801.557386907425)
+--(axis cs:2,800.036214932191)
+--(axis cs:1,811.197211734943)
+--cycle;
+
+\path [fill=color1, fill opacity=0.2, very thin]
+(axis cs:1,1648.08090269321)
+--(axis cs:1,1640.80047986953)
+--(axis cs:2,1843.43954292875)
+--(axis cs:3,2123.77688430585)
+--(axis cs:4,2245.53010930735)
+--(axis cs:4,2253.40970882798)
+--(axis cs:4,2253.40970882798)
+--(axis cs:3,2132.33727578151)
+--(axis cs:2,1855.20582699139)
+--(axis cs:1,1648.08090269321)
+--cycle;
+
+\path [fill=color2, fill opacity=0.2, very thin]
+(axis cs:1,3156.33226462958)
+--(axis cs:1,3137.35956281991)
+--(axis cs:1,3156.33226462958)
+--(axis cs:1,3156.33226462958)
+--cycle;
+
+\addplot [thick, color0, mark=*, mark size=3, mark options={solid}]
+table {%
+1 810.286726909255
+2 798.830193285604
+3 799.659436504972
+4 792.972112924258
+5 853.007709490447
+6 888.249353679901
+7 1362.07882422257
+};
+\addlegendentry{\conveinsum}
+\addplot [thick, color1, mark=*, mark size=3, mark options={solid}]
+table {%
+1 1644.46058021686
+2 1849.39908427744
+3 2127.90901954
+4 2249.39714615065
+};
+\addlegendentry{\pytorch w/ ckpt}
+\addplot [thick, color2, mark=*, mark size=3, mark options={solid}]
+table {%
+1 3147.53106714877
+};
+\addlegendentry{\pytorch  w/o ckpt}
+\end{axis}
+
+\end{tikzpicture}

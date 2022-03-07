@@ -1,0 +1,51 @@
+\begin{table}[!htbp]
+\vspace{-1.5em}
+\caption{\textbf{Maximum batch size for a speech and video task.} The maximal batch size allowed for data under varying compression rates and using different libraries on \textbf{(1)} an automatic speech recognition task on LibriSpeech and \textbf{(2)} a video classification task for spatial (S) and temporal (T) streams of a two-stream network on UCF-101. \conveinsum allows for larger batch sizes by efficiently evaluating tensorial forwards and backwards passes. ``ckp'' means checkpointing.  %using \texttt{conv\_einsum} and \pytorch with/without checkpointing.
+}
+\vspace{1em}
+ \label{tab:max-batch-size}
+  \centering
+  \resizebox{\linewidth}{!}{
+  \begin{tabular}{lccc}
+    %\toprule
+    \multicolumn{4}{c}{\textbf{Automatic speech recognition task}}\\
+    \hline
+    \thead{CR} & \thead{\conveinsum} & \thead{{\shortstack{\pytorch w/ ckpt}}} & \thead{{\shortstack{\pytorch w/o ckpt}} }\\
+    \midrule
+    1\% & 14 & 8 & 6\\
+    2\% & 14 & 8 & 6\\
+    5\% & 12 & 6 & 4\\
+    10\% & 10 & 4 & 2\\
+    20\% & 8 & 2 & 0\\
+    50\% & 6 & 2 & 0 \\
+    100\% & 4 & 1 & 0\\
+    \bottomrule
+ \end{tabular}}
+%\end{table}
+
+%\begin{table}[!htbp]
+ \label{tab:video-max-batch-size}
+  \centering
+  \resizebox{\linewidth}{!}{
+  \begin{tabular}{lcccccc}
+    %\toprule
+     &&\multicolumn{4}{c}{\textbf{Video classification task}}
+     \\
+     \hline
+     &\multicolumn{2}{c}{\conveinsum} & \multicolumn{2}{c}{\shortstack{\pytorch w/ ckpt}} & \multicolumn{2}{c}{\shortstack{\pytorch w/o ckpt}} \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+    \thead{CR} & \thead{S} & \thead{T} & \thead{S} & \thead{T} & \thead{S} & \thead{T}\\
+    \midrule
+    1\% & 20 & 30 & 2 & 4 & 1 & 2\\
+    2\% & 20 & 30 & 2 & 4 & 0 & 0\\
+    5\% & 20 & 30 & 2 & 4 & 0 & 0\\
+    10\% & 18 & 30 & 1 & 2 & 0 & 0\\
+    20\% & 16 & 27 & 0 & 0 & 0 & 0\\
+    50\% & 12 & 22 & 0 & 0 & 0 & 0\\
+    100\% & 4 & 14 & 0 & 0 & 0 & 0\\
+    \bottomrule
+ \end{tabular}}
+ \vspace{-1em}
+\end{table}
+
+%Maximum batch size for a video classification task for spatial (S) and temporal (T) streams of two-stream network.

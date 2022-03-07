@@ -1,0 +1,170 @@
+%%%%%%%% ICML 2022 LATEX SUBMISSION FILE %%%%%%%%%%%%%%%%%
+\documentclass[nohyperref]{article}
+
+\def\inchome{../include}
+\def\fighome{../figures}
+\def\bibhome{../bib}
+\def\texhome{tex}
+
+\input{\inchome/supp_packages}
+\input{\inchome/supp_macros}
+
+\def\papertitle{AutoTNN: A Framework and Library for Generating and Training \\ Tensorial Neural Networks}
+\def\papertitlerunning{AutoTNN: A Framework and Library for Generating and Training Tensorial Neural Networks}
+
+% Recommended, but optional, packages for figures and better typesetting:
+\usepackage{microtype}
+\usepackage{graphicx}
+% \usepackage{subfigure}
+\usepackage{booktabs} % for professional tables
+
+% hyperref makes hyperlinks in the resulting PDF.
+% If your build breaks (sometimes temporarily if a hyperlink spans a page)
+% please comment out the following usepackage line and replace
+% \usepackage{icml2022} with \usepackage[nohyperref]{icml2022} above.
+% \usepackage{hyperref}
+% we change the format of the hyperref
+% \usepackage[colorlinks=true,linkcolor=blue,citecolor=green,urlcolor=blue]{hyperref}
+%\usepackage{natbib}
+% Attempt to make hyperref and algorithmic work together better:
+%\newcommand{\theHalgorithm}{\arabic{algorithm}}
+
+% Use the following line for the initial blind version submitted for review:
+\usepackage[nohyperref]{\inchome/icml2022}
+% If accepted, instead use the following line for the camera-ready submission:
+% \usepackage[accepted]{icml2022}
+
+% For theorems and such
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{amsthm}
+
+% if you use cleveref..
+%\usepackage[capitalize,noabbrev]{cleveref}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THEOREMS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}[theorem]{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% Todonotes is useful during development; simply uncomment the next line
+%    and comment out the line below the next line to turn off comments
+%\usepackage[disable,textsize=tiny]{todonotes}
+% \usepackage[textsize=tiny]{todonotes}
+
+\newcommand{\fh}[1]{{\footnotesize{\textcolor{purple}{[FH:#1]}}}}
+\newcommand{\js}[1]{{\footnotesize{\textcolor{red}{[JS:#1]}}}}
+\newcommand{\tr}[1]{{\footnotesize{\textcolor{blue}{[TR:#1]}}}}
+
+% The \mlsystitle you define below is probably too long as a header.
+% Therefore, a short form for the running title is supplied here:
+\icmltitlerunning{\papertitlerunning}
+
+\begin{document}
+
+\twocolumn[
+\icmltitle{\papertitle}
+
+% It is OKAY to include author information, even for blind
+% submissions: the style file will automatically remove it for you
+% unless you've provided the [accepted] option to the icml2022
+% package.
+
+% List of affiliations: The first argument should be a (short)
+% identifier you will use later to specify author affiliations
+% Academic affiliations should list Department, University, City, Region, Country
+% Industry affiliations should list Company, City, Region, Country
+
+% You can specify symbols, otherwise they are numbered in order.
+% Ideally, you should not use this facility. Affiliations will be numbered
+% in order of appearance and this is the preferred way.
+\icmlsetsymbol{equal}{*}
+
+\begin{icmlauthorlist}
+\icmlauthor{Tahseen Rabbani}{equal,umd_cs}
+\icmlauthor{Jiahao Su}{equal,umd_ece}
+\icmlauthor{Xiaoyu Liu}{umd_cs}
+\icmlauthor{David Chan}{umd_cs}
+\icmlauthor{Geoffrey Sangston}{umd_math}
+\icmlauthor{Furong Huang}{umd_cs}
+\end{icmlauthorlist}
+
+\icmlaffiliation{umd_cs}{
+Department of Computer Science,
+University of Maryland, 
+College Park, MD USA
+}
+\icmlaffiliation{umd_ece}{
+Department of Electrical and Computer Engineering,
+University of Maryland,
+College Park, MD USA
+}
+\icmlaffiliation{umd_math}{
+Department of Mathematics,
+University of Maryland, 
+College Park, MD USA
+}
+
+\icmlcorrespondingauthor{Tahseen Rabbani}{trabbani@umd.edu}
+\icmlcorrespondingauthor{Jiahao Su}{jiahaosu@umd.edu}
+\icmlcorrespondingauthor{Furong Huang}{furongh@umd.edu}
+
+% You may provide any keywords that you
+% find helpful for describing your paper; these are used to populate
+% the "keywords" metadata in the PDF but will not be shown in the document
+\icmlkeywords{Machine Learning, ICML}
+
+\vskip 0.3in
+]
+
+% this must go after the closing bracket ] following \twocolumn[ ...
+
+% This command actually creates the footnote in the first column
+% listing the affiliations and the copyright notice.
+% The command takes one argument, which is text to display at the start of the footnote.
+% The \mlsysEqualContribution command is standard text for equal contribution.
+% Remove it (just {}) if you do not need this facility.
+
+% leave blank if no need to mention equal contribution
+\printAffiliationsAndNotice{}
+% otherwise use the standard text.
+% \printAffiliationsAndNotice{\icmlEqualContribution}
+
+\begin{abstract}
+Modern neural networks achieve state-of-the-art results over a vast array of machine learning problems, but at the cost of increasing parameters, in some cases numbering in the billions. Such large models are slow and unsuitable for machine learning on constrained edge clients such as IoT and mobile devices. One strategy for compactifying a network without sacrificing much expressive power is to reshape it into a tensorial neural network (TNN), which is a higher-order tensorization of its layers, followed by a factorization, such as a CP-decomposition, which strips down a weight to its critical structural components. In this paper, we introduce an open-source library \autotnn, which can build and train a TNN based upon a user-specified backbone network and tensor factorization scheme. Our library extends the well-known \einsum method to handle convolutions, thereby allowing any forward or backward pass to be regarded as a tensor graph, and leverages our generalized version of \citet{pfeifer2014faster}'s \netcon algorithm to evaluate the graph in a FLOPs-optimal order. Comprehensive experiments on a wide range of model scales over diverse tasks, including image classification, speech recognition, and video classification, demonstrate the efficiency and accuracy of \autotnn model training.
+\end{abstract}
+
+\input{1_introduction}
+\input{3_preliminary}
+\input{4_algorithms}
+\input{2_related_works}
+\input{5_experiments}
+\input{6_conclusion}
+
+\newpage
+\bibliography{\bibhome/supp_bib}
+\bibliographystyle{\inchome/icml2022}
+
+\clearpage
+\appendix
+
+% \begin{center}
+% {\bf \Large Appendices for \papertitle}
+% \end{center}
+
+\input{a0_additional_workrelated}
+\input{a1_preliminary}
+\input{a2_algorithms}
+\input{a3_experiments}
+
+\end{document}

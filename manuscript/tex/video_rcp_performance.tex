@@ -1,0 +1,60 @@
+% This file was created by tikzplotlib v0.9.8.
+\begin{tikzpicture}
+
+\definecolor{color0}{rgb}{0.886274509803922,0.290196078431373,0.2}
+\definecolor{color1}{rgb}{0.203921568627451,0.541176470588235,0.741176470588235}
+
+\begin{axis}[
+axis line style={white},
+legend cell align={left},
+legend style={
+  fill opacity=0.8,
+  draw opacity=1,
+  text opacity=1,
+  at={(0.97,0.03)},
+  anchor=south east,
+  draw=white!80!black
+},
+tick align=outside,
+x grid style={white},
+xlabel={compression rate},
+xmajorticks=true,
+xtick style={draw=none},
+xmin=0.7, xmax=7.3,
+xtick style={color=white!33.3333333333333!black},
+xtick={0,1,2,3,4,5,6,7,8},
+xticklabels={,1\%,2\%,5\%,10\%,20\%,50\%,100\%,},
+y grid style={white!93.3333333333333!black},
+ylabel={accuracy},
+ymajorgrids,
+ymajorticks=true,
+ytick style={draw=none},
+ymin=83.33462, ymax=98.71658,
+ytick style={color=white!33.3333333333333!black}
+]
+
+\addplot [thick, color0, mark=*, mark size=3, mark options={solid}]
+table {%
+1 96.9072
+2 97.4623
+3 97.4623
+4 97.6474
+5 97.9117
+6 98.0174
+7 97.9646
+};
+\addlegendentry{top 5 accuracy}
+\addplot [thick, color1, mark=*, mark size=3, mark options={solid}]
+table {%
+1 84.0338
+2 86.4129
+3 86.6244
+4 87.6289
+5 88.1047
+6 89.0034
+7 89.6114
+};
+\addlegendentry{top 1 accuracy}
+\end{axis}
+
+\end{tikzpicture}

@@ -1,0 +1,18 @@
+\begin{figure}[!htbp]
+\begin{minipage}[b]{.5\linewidth}
+\centering
+\resizebox{\textwidth}{!}{
+   \input{\texhome/image_cls_cp_train_lib_vs_pytorch_tensor}
+    }
+\subcaption{CP Train}\label{fig:imagecls-cp-vs-pytorch-train}
+\end{minipage}%
+\hfill
+\begin{minipage}[b]{.5\linewidth}
+\centering
+\resizebox{\textwidth}{!}{
+    \input{\texhome/image_cls_cp_test_lib_vs_pytorch_tensor}
+    }
+\subcaption{CP Test}\label{fig:imagecls-cp-vs-pytorch-test}
+\end{minipage}
+\caption{Run-time comparison between \texttt{conv\_einsum} and \texttt{Pytorch} implementation of CP-TNN for image classification machine learning task implemented on CIFAR-10 dataset. We denote error bars using shaded areas and they are generated using 10 random runs. }\label{fig:imagecls-cp-vs-pytorch}
+\end{figure}

@@ -1,0 +1,118 @@
+\newcommand{\tensor}[1]{\bm{\mathcal{#1}}}
+\newcommand{\mytensor}[1]{\bm{\mathcal{#1}}}
+\newcommand{\mymatrix}[1]{\bm{#1}}
+\newcommand{\myvector}[1]{\bm{#1}}
+
+\newcommand{\vectorSub}[2]{\bm{#1}_{#2}}
+\newcommand{\vectorInd}[3]{\bm{#1}^{(#2)}_{#3}}
+\newcommand{\vectorSup}[2]{\bm{#1}^{(#2)}}
+
+\newcommand{\matrixSub}[2]{\bm{#1}_{#2}}
+\newcommand{\matrixInd}[3]{\bm{#1}^{(#2)}_{#3}}
+\newcommand{\matrixSup}[2]{\bm{#1}^{(#2)}}
+
+\newcommand{\tensorSub}[2]{\bm{\mathcal{#1}}_{#2}}
+\newcommand{\tensorInd}[3]{\bm{\mathcal{#1}}^{(#2)}_{#3}}
+\newcommand{\tensorSup}[2]{\bm{\mathcal{#1}}^{(#2)}}
+
+\newcommand{\slice}{\bm{:}}
+
+\newcommand\cpeq{\mathrel{\stackrel{\makebox[0pt]{\mbox{\normalfont\tiny CP}}}{=}}}
+\newcommand\tkeq{\mathrel{\stackrel{\makebox[0pt]{\mbox{\normalfont\tiny TK}}}{=}}}
+\newcommand\tteq{\mathrel{\stackrel{\makebox[0pt]{\mbox{\normalfont\tiny TT}}}{=}}}
+\newcommand\treq{\mathrel{\stackrel{\makebox[0pt]{\mbox{\normalfont\tiny TR}}}{=}}}
+
+\newcommand{\relu}{\mathsf{ReLU}}
+\DeclareMathOperator{\argmin}{\mathsf{argmin}}
+\DeclareMathOperator{\argmax}{\mathsf{argmax}}
+
+\ifdefined\R
+\else
+\newcommand\R{\mathbb{R}}
+\fi
+
+\def\st{\mathrm{st}}
+\def\nd{\mathrm{nd}}
+\def\rd{\mathrm{rd}}
+\def\th{\mathrm{th}}
+
+\newcommand{\TN}{TN\xspace} % tensor network
+\newcommand{\TNlong}{tensor network\xspace}
+\newcommand{\TNLong}{Tensor network\xspace}
+\newcommand{\TNLONG}{Tensor Network\xspace}
+
+\newcommand{\TNN}{TNN\xspace} % tensorial neural networks
+\newcommand{\TNNlong}{tensorial neural network\xspace}
+\newcommand{\TNNLong}{Tensorial neural network\xspace}
+\newcommand{\TNNLONG}{Tensorial Neural Network\xspace}
+
+\newcommand{\MLP}{MLP\xspace} % multi-layer perceptron
+\newcommand{\MLPlong}{multi-layer perceptron\xspace}
+\newcommand{\MLPLong}{Multi-layer perceptron\xspace}
+\newcommand{\MLPLONG}{Multi-Layer Perceptron\xspace}
+
+\newcommand{\CNN}{CNN\xspace} % convolutional neural network
+\newcommand{\CNNlong}{convolutional neural network\xspace}
+\newcommand{\CNNLong}{Convolutional neural network\xspace}
+\newcommand{\CNNLONG}{Convolutional Neural Network\xspace}
+
+\newcommand{\NN}{NN\xspace} % neural network
+\newcommand{\NNlong}{neural network\xspace}
+\newcommand{\NNLong}{Neural network\xspace}
+\newcommand{\NNLONG}{Neural Network\xspace}
+
+\newcommand{\SVD}{SVD\xspace}
+\newcommand{\CP}{CP\xspace}
+\newcommand{\TK}{TK\xspace}
+\newcommand{\TT}{TT\xspace}
+\newcommand{\TR}{TR\xspace}
+
+\newcommand{\CPlong}{Canonical polyadic\xspace}
+\newcommand{\TKlong}{Tucker\xspace}
+\newcommand{\TTlong}{Tensor-Train\xspace}
+\newcommand{\TRlong}{Tensor-Ring\xspace}
+
+\newcommand{\SVDlong}{singular value decomposition\xspace}
+\newcommand{\CPDlong}{canonical polyadic decomposition\xspace}
+\newcommand{\TKDlong}{Tucker decomposition\xspace}
+\newcommand{\TTDlong}{tensor-train decomposition\xspace}
+\newcommand{\TRDlong}{tensor-ring decomposition\xspace}
+
+\newcommand{\SVDLong}{Singular value decomposition\xspace}
+\newcommand{\CPDLong}{Canonical polyadic decomposition\xspace}
+\newcommand{\TKDLong}{Tucker decomposition\xspace}
+\newcommand{\TTDLong}{Tensor-train decomposition\xspace}
+\newcommand{\TRDLong}{Tensor-ring decomposition\xspace}
+
+\newcommand{\SVDLONG}{Singular Value Decomposition\xspace}
+\newcommand{\CPDLONG}{Canonical Polyadic Decomposition\xspace}
+\newcommand{\TKDLONG}{Tucker Decomposition\xspace}
+\newcommand{\TTDLONG}{Tensor-Train Decomposition\xspace}
+\newcommand{\TRDLONG}{Tensor-Ring Decomposition\xspace}
+
+\newcommand{\einsum}{\textsf{einsum}\xspace}
+\newcommand{\conveinsum}{\textsf{conv\_einsum}\xspace}
+\newcommand{\einsumX}[2]{\textsf{einsum("#1", #2)}\xspace}
+\newcommand{\conveinsumX}[2]{\textsf{conv\_einsum("#1", #2)}\xspace}
+
+\newcommand{\convNd}{\textsf{convNd}\xspace}
+\newcommand{\convOne}{\textsf{conv1d}\xspace}
+\newcommand{\convTwo}{\textsf{conv2d}\xspace}
+\newcommand{\convThr}{\textsf{conv3d}\xspace}
+
+\newcommand{\convNdX}[1]{\convNd(#1)}
+\newcommand{\convOneX}[1]{\convOne(#1)}
+\newcommand{\convTwoX}[1]{\convTwo(#1)}
+\newcommand{\convThrX}[1]{\convThr(#1)}
+
+\newcommand{\tensorly}{\textsf{TensorLy}\xspace}
+\newcommand{\pytorch}{\textsf{PyTorch}\xspace}
+\newcommand{\numpy}{\textsf{NumPy}\xspace}
+
+\newcommand{\torcheinsum}{\textsf{torch.einsum}\xspace}
+\newcommand{\numpyeinsum}{\textsf{numpy.einsum}\xspace}
+\newcommand{\opteinsum}{\textsf{opt-einsum}\xspace}
+\newcommand{\netcon}{\textsf{netcon}\xspace}
+
+\newcommand{\opentnn}{\textsf{OpenTNN}\xspace}
+\newcommand{\autotnn}{\textsf{AutoTNN}\xspace}

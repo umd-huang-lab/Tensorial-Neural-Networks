@@ -1,0 +1,17 @@
+\begin{table}[!htbp]
+\caption{Run-time (seconds per epoch) comparison between \conveinsum and \pytorch implementation of TNNs using different tensor decomposition forms in the image classification task on the CIFAR-10 dataset.}
+ \label{tab:different-tensor-forms}
+  \centering
+  \begin{tabular}{lcccccc}
+    \toprule
+    & \multicolumn{2}{c}{conv-einsum} & \multicolumn{2}{c}{\shortstack{\pytorch\\w/o ckpt}} & \multicolumn{2}{c}{\shortstack{\pytorch\\w/ ckpt}} \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+    \thead{Tensor Form} & \thead{Train} & \thead{Test} & \thead{Train} & \thead{Test} & \thead{Train} & \thead{Test}\\
+    \midrule
+    RCP & 14 & 2.14 & 22 & 2.57 & 29 & 2.61\\
+    RTR & 8 & 1.41 & 16 & 1.86 & 16 & 1.86\\
+    RTT & 8 & 1.37 & 16 & 1.61 & 16 & 1.68\\
+    RTK & 6 & 1.34 & 17 & 1.47 & 17 & 1.54\\
+    \bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,37 @@
+\begin{figure}[!htbp]
+\vspace{-1em}
+\begin{minipage}[b]{.5\linewidth}
+\centering
+\resizebox{\textwidth}{!}{
+   \input{\texhome/video_spatial_rcp_train_lib_vs_pytorch_tensor}
+    }
+\subcaption{RCP Train (spatial)}\label{fig:video-rcp-vs-pytorch-train-spatial}
+\end{minipage}%
+\hfill
+\begin{minipage}[b]{.5\linewidth}
+\centering
+\resizebox{\textwidth}{!}{
+    \input{\texhome/video_spatial_rcp_test_lib_vs_pytorch_tensor}
+    }
+\subcaption{RCP Test (spatial)}\label{fig:video-rcp-vs-pytorch-test-spatial}
+\end{minipage}
+\begin{minipage}[b]{.5\linewidth}
+\centering
+\resizebox{\textwidth}{!}{
+   \input{\texhome/video_motion_rcp_train_lib_vs_pytorch_tensor}
+    }
+\subcaption{RCP Train (temporal)}\label{fig:video-rcp-vs-pytorch-train-temporal}
+\vspace{-1em}
+\end{minipage}%
+\hfill
+\begin{minipage}[b]{.5\linewidth}
+\centering
+\resizebox{\textwidth}{!}{
+    \input{\texhome/video_motion_rcp_test_lib_vs_pytorch_tensor}
+    }
+\subcaption{RCP Test (temporal)}\label{fig:video-rcp-vs-pytorch-test-temporal}
+\vspace{-1em}
+\end{minipage}
+\caption{\textbf{Run-time comparison between \conveinsum and \pytorch for a video classification machine learning task} An RCP-TNN ($R=3$) is trained on the UCF-101 dataset. All tests were run using the maximum allowable batch size. \pytorch w/ checkpointing was only able to run without memory overflow for compression rates 1\% - 10\% and \pytorch w/o checkpointing was only able to run without memory overflow for compression rate 1\%. Runtimes are averaged over 3 random runs, and error bars are denoted by the shaded areas. }\label{fig:video-rcp-vs-pytorch}
+\vspace{-1em}
+\end{figure}

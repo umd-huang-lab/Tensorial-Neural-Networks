@@ -1,0 +1,41 @@
+\begin{table}[!htbp]
+\centering
+\resizebox{\textwidth}{!}{
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{c c c}
+\toprule
+Operator & Notation & Definition \\
+\midrule
+	% 1) tensor contraction
+	\begin{tabular}{l} mode-($I_k, J_l$) \\ Tensor Contraction \end{tabular} & 
+	$\tensorSup{T}{1} = \tensor{X} \times^{I_k}_{J_l} \tensor{Y}$ &
+	\begin{tabular}{l} $\tensorInd{T}{i_0, \cdots, i_{k-1}, i_{k+1}, \cdots, i_{m-1}, j_0, \cdots, j_{l-1}, j_{l+1}, \cdots, j_{n-1}}{1}$ \\
+	$ = \big< \tensorSub{X}{i_0, \cdots, i_{k-1},{ :}, i_{k+1}, \cdots, i_{m-1}},  \tensorSub{Y}{j_0, \cdots, j_{l-1}, {:}, j_{l+1}, \cdots, j_{n-1}}\big>$ \\ 
+	Inner product of mode-$k$ fiber of $\tensor{X}$ and mode-$l$ fiber of $\tensor{Y}$ \end{tabular} \\
+\midrule
+	% 2) tensor convolution
+	\begin{tabular}{l} mode-$(I_k, J_l)$ \\Tensor Convolution \end{tabular} & 
+	$\tensorSup{T}{2} = \tensor{X} \ast^{I_k}_{J_l} \tensor{Y}$ &
+	\begin{tabular}{l}$\tensorInd{T}{i_0, \cdots, i_{k-1}, {:}, i_{k+1}, \cdots, i_{m-1}, j_0, \cdots, j_{l-1}, j_{l+1}, \cdots, j_{n-1}}{2} $ \\
+	$= \tensorSub{X}{i_0, \cdots, i_{k-1}, {:}, i_{k+1}, \cdots, i_{m-1}} \ast \tensorSub{Y}{j_0, \cdots, j_{l-1},{ :}, j_{l+1}, \cdots, j_{n-1}}$ \\ 
+	Convolution of mode-$k$ fiber of $\tensor{X}$ and mode-$l$ fiber of $\tensor{Y}$ \end{tabular} \\
+\midrule
+	% 3) tensor outer product
+	\begin{tabular}{l} mode-($I_k, J_l)$ \\ Tensor Batch Product \end{tabular} &
+	$\tensorSup{T}{3} = \tensor{X} \otimes^{I_k}_{J_l} \tensor{Y}$ & 
+	\begin{tabular}{l} $\tensorInd{T}{i_0, \cdots, i_{k-1}, {r}, i_{k+1}, \cdots, i_{m-1}, j_0, \cdots,  j_{n-1}}{3} $ \\
+	$=\tensorSub{X}{i_0, \cdots, i_{k-1}, {r}, i_{k+1}, \cdots, i_{m-1}} ~ \tensorSub{Y}{j_0, \cdots, j_{l-1},{ r}, j_{l+1}, \cdots, j_{n-1}}$ \\ 
+	Hadamard product of mode-$k$ fiber of $\tensor{X}$ and mode-$l$ fiber of $\tensor{Y}$ \end{tabular} \\
+\bottomrule
+\end{tabular}
+}
+\caption{\textbf{Primitive tensor operations}. 
+$\tensor{X} \in \R^{I_0 \times \cdots \times I_{m-1}}$, 
+$\tensor{Y} \in \R^{J_0 \times \cdots \times J_{n-1}}$ are input tensors.
+$\tensorSup{T}{1}$, $\tensorSup{T}{2}$, $\tensorSup{T}{3}$ are the outputs of 
+Mode-$(I_k, J_l)$ tensor contraction, tensor convolution, and batch outer product.
+Note that both mode-$(I_k, J_l)$ tensor contraction and mode-($I_k, J_l$) tensor batch product 
+are legal only if $I_k = J_l$. Consequently, $\tensorSup{T}{1}$ is an $(m+n-2)$-order tensor
+and $\tensorSup{T}{2}$, $\tensorSup{T}{3}$ are $(m+n-1)$-order tensors.}
+\label{tab:primitive-operations}
+\end{table}

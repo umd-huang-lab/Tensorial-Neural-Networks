@@ -1,0 +1,36 @@
+\section{Optimal Sequencer}
+\label{app:algorithms}
+
+\opteinsum \citep{daniel2018opt} determines the optimal evaluation path of a tensor contraction sequence via the \netcon algorithm~\citep{pfeifer2014faster}. The algorithm considers the cost of evaluating intermediate products as it explores the path tree. We do not cover the tree traversal strategy here (we refer the reader to \citep{pfeifer2014faster}), but instead discuss how our \conveinsum generalizes \netcon by calculating the cost of a tensorial intermediate product. 
+We first review the cost (i.e., number of additions/multiplications) of each primitive operation in FLOPs. Let $\tensorSup{T}{0}\in\mathbb{R}^{I_0 \times \cdots I_k \times I_{m-1}}$, $\tensorSup{T}{1}\in\mathbb{R}^{J_0 \times \cdots J_l  \cdots \times J_{n-1}}$:
+\begin{enumerate}
+    \item The mode-($k,l$) contraction cost is
+    \begin{equation}
+    \label{contraction-cost}
+    \mathcal{O}\Bigl(\bigl(\prod_{p=0}^{m-1} I_p\bigr)\bigl(\prod_{q=0,q\neq l}^{n-1} J_q \bigr)\Bigr).
+    \end{equation}
+    \item The mode-($k,l$) batch product cost is 
+    \begin{equation}
+    \label{batch-cost}
+    \mathcal{O}\Bigl(\bigl(\prod_{p=0}^{m-1} I_p\bigr)\bigl(\prod_{q=0, q\neq l}^{n-1} J_q \bigr)\Bigr).    
+    \end{equation}
+    \item The outer product cost is
+    \begin{equation}
+    \label{outer-prod-cost}
+    \mathcal{O}\Bigl(\bigl(\prod_{p=0}^{m-1} I_p\bigr)\bigl(\prod_{q=0}^{n-1} J_q\bigr)\Bigr).
+    \end{equation}
+    \item The mode-($k,l$) convolution cost (without a Fast Fourier Transform) is
+    \begin{equation}
+    \label{convolution-cost}
+    \mathcal{O}\Bigl(\bigl(\prod_{p=0}^{m-1} I_p\bigr)\bigl(\prod_{q=0}^{n-1} J_q\bigr)\Bigr).
+    \end{equation}
+\end{enumerate}
+Now, as \netcon explores the path tree associated to contraction sequence (which includes batch products, outer products as special cases of contractions), it invokes a \textsf{cost} method which relies on \Cref{contraction-cost,outer-prod-cost} to analyze an intermediate tensor product along a path The \textsf{tnn-cost} method replaces the standard \textsf{cost} function of \netcon to fully realize the optimal sequencer by adding in the convolution cost model of \Cref{convolution-cost} (in addition to complex string handling to accommodate one letter of convolution type being associated to several dimensional sizes). 
+
+As explained in \Cref{sub:algorithms-sequencer}, if the optimal sequencer is being used to train a TNN, further modification of \textsf{tnn-cost} is needed to incorporate backpropagation costs, which are once again tensorial sequences dictated by the same cost equations. In practice, we submit a flag to \conveinsum to indicate that the optimal sequencer is being used for training. 
+
+% Discussion of convolution varieties
+\textbf{Convolution Varieties.}
+In our preceding discussions, we subtly assume commutative property of the convolution operation for optimal order evaluation. However, in practice, the convolutions used in neural networks are not necessarily commutative, since one input corresponds to features and another corresponds to filters. Specifically, if the convolution is not standard (e.g., dilated or strided) or not circularly padded, the convolution operation will not be communicative.
+To make our \opentnn compatible with neural network practice, we support non-communicative convolutions if a letter for convolution only appears in two inputs. When non-communicative convolution is used, we assume the input with larger dimension size at the specified mode as features and another input as filters. 
+However, if a letter for convolution appear more than twice in the inputs (i.e., the convolution is multi-way), we will only support communicative convolution with circular padding for now.
