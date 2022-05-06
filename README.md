@@ -19,3 +19,4 @@ python -m torch.distributed.launch --nproc_per_node=4 CIFAR10_exp.py  --workers 
 
 ```
 
+decompose_type: RCP CP RTK TK RTT TT RTR TR
